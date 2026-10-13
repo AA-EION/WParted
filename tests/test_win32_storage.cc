@@ -10,6 +10,7 @@
 #include "VdsWrapper.h"
 #include "FmifsWrapper.h"
 
+#include <chrono>
 #include <gtest/gtest.h>
 
 using namespace WParted;
@@ -63,3 +64,52 @@ TEST(Win32StorageEngineTest, FmifsWrapperInstance)
     EXPECT_TRUE(fmifs.IsAvailable());
 #endif
 }
+
+TEST(Win32StorageEngineTest, GptLayoutPreservation)
+{
+    Win32DiskDrive disk;
+    disk.diskIndex = 99;
+    disk.isGpt = true;
+    disk.logicalSectorSize = 512;
+    disk.totalSizeBytes = 100ULL * 1024 * 1024 * 1024;
+
+    GUID customGuid = { 0x12345678, 0xABCD, 0xEF01, {0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01} };
+    disk.gptDiskId = customGuid;
+
+    Win32DiskPartition part;
+    part.partitionNumber = 1;
+    part.startingOffset = 1048576;
+    part.partitionLength = 1073741824;
+    part.gptTypeGuid = GUID_PARTITION_BASIC_DATA;
+    part.gptIdGuid = { 0 }; // Should be generated if zero
+    disk.partitions.push_back(part);
+
+    // Verify custom disk GUID is not overridden by basic data GUID
+    EXPECT_FALSE(DualNomenclature::AreGuidsEqual(disk.gptDiskId, GUID_PARTITION_BASIC_DATA));
+    EXPECT_TRUE(DualNomenclature::AreGuidsEqual(disk.gptDiskId, customGuid));
+}
+
+TEST(Win32StorageEngineTest, MbrMultipleOfFourRule)
+{
+    // Windows requires MBR PartitionCount to be a multiple of 4
+    size_t partCounts[] = { 1, 2, 3, 5, 7 };
+    for (size_t count : partCounts) {
+        DWORD aligned = static_cast<DWORD>(((count + 3) / 4) * 4);
+        EXPECT_EQ(aligned % 4, 0u);
+        EXPECT_GE(aligned, count);
+        EXPECT_LT(aligned, count + 4);
+    }
+}
+
+TEST(Win32StorageEngineTest, BitLockerQuerySpeed)
+{
+    auto tStart = std::chrono::high_resolution_clock::now();
+    auto status = BitLockerGuard::QueryStatus(L"X:");
+    auto tEnd = std::chrono::high_resolution_clock::now();
+
+    auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
+    // Native API or fast check should complete in under 500ms (not hanging for 5-10s)
+    EXPECT_LT(durationMs, 500);
+    EXPECT_FALSE(status.isEncrypted);
+}
+

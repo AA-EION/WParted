@@ -25,3 +25,23 @@ TEST(WslBridgeTest, QueryStatusSafe)
     // QueryStatus executes without throw/crash regardless of WSL2 state
     SUCCEED();
 }
+
+TEST(WslBridgeTest, DistroNameConstant)
+{
+    EXPECT_STREQ(WParted_WSL_Bridge::HELPER_DISTRO_NAME, "wparted-wsl-engine");
+}
+
+TEST(WslBridgeTest, FallbackDeviceMapping)
+{
+    auto& bridge = WParted_WSL_Bridge::Instance();
+    // Disk 0 maps to /dev/sdb in fallback (since /dev/sda is WSL distro root)
+    std::string dev0 = bridge.FindLinuxDeviceNode(0, 0);
+    EXPECT_FALSE(dev0.empty());
+    EXPECT_NE(dev0.find("/dev/sd"), std::string::npos);
+
+    // Disk 1 maps to /dev/sdc or later
+    std::string dev1 = bridge.FindLinuxDeviceNode(1, 0);
+    EXPECT_FALSE(dev1.empty());
+    EXPECT_NE(dev1.find("/dev/sd"), std::string::npos);
+}
+

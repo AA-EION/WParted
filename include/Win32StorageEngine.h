@@ -64,6 +64,13 @@ struct Win32DiskDrive
     bool isRemovable = false;
     bool isSmartHealthy = true;
 
+    // GPT / MBR Identifiers to preserve on layout write (prevents BCD corruption)
+    GUID gptDiskId = { 0 };
+    uint64_t gptStartingUsableOffset = 0;
+    uint64_t gptUsableLength = 0;
+    uint32_t gptMaxPartitionCount = 128;
+    uint32_t mbrSignature = 0;
+
     std::vector<Win32DiskPartition> partitions;
 
     std::string GetDisplayName() const {

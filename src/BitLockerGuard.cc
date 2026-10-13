@@ -80,6 +80,38 @@ BitLockerStatus BitLockerGuard::QueryStatus(const std::wstring& volumePath)
     BitLockerStatus status;
 #if defined(_WIN32)
     std::wstring drive = CleanDrivePath(volumePath);
+
+    // Fast check: If drive letter does not exist on system, avoid spawning manage-bde
+    if (drive.length() == 2 && drive[1] == L':') {
+        std::wstring root = drive + L"\\";
+        UINT dt = GetDriveTypeW(root.c_str());
+        if (dt == DRIVE_NO_ROOT_DIR || dt == DRIVE_UNKNOWN) {
+            return status;
+        }
+    }
+
+    // Fast native check via fveapi.dll (FveGetStatus / InternalFveIsVolumeEncrypted)
+    typedef LONG (WINAPI *PFN_InternalFveIsVolumeEncrypted)(LPCWSTR VolumeName, BOOLEAN* IsEncrypted);
+    HMODULE hFve = LoadLibraryW(L"fveapi.dll");
+    if (hFve) {
+        auto pfnIsEnc = reinterpret_cast<PFN_InternalFveIsVolumeEncrypted>(
+            GetProcAddress(hFve, "InternalFveIsVolumeEncrypted"));
+        if (pfnIsEnc) {
+            BOOLEAN isEnc = FALSE;
+            std::wstring rootPath = (drive.length() == 2 && drive[1] == L':') ? (drive + L"\\") : drive;
+            if (pfnIsEnc(rootPath.c_str(), &isEnc) == 0 && !isEnc) {
+                // Volume is verified NOT encrypted via native BitLocker API - skip external subprocess
+                status.isEncrypted = false;
+                status.isLocked = false;
+                status.isProtectionOn = false;
+                FreeLibrary(hFve);
+                return status;
+            }
+        }
+        FreeLibrary(hFve);
+    }
+
+    // Query detailed status via manage-bde if volume is encrypted
     std::wstring cmd = L"manage-bde.exe -status " + drive;
     std::string output = ExecuteCommandCapture(cmd);
 

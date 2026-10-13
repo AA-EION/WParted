@@ -92,7 +92,110 @@ int main(int argc, char* argv[])
         }
         return 0;
     }
+    if (action == "--create-label" && argc >= 4) {
+        int diskIndex = std::stoi(argv[2]);
+        std::string labelType = argv[3];
+        std::cout << "[*] Creating disklabel '" << labelType << "' on Disk " << diskIndex << "...\n";
+        bool ok = WParted::WParted_Win32_Core::Instance().CreateDiskLabel(diskIndex, labelType);
+        std::cout << (ok ? "[+] Disklabel created successfully.\n" : "[!] Failed to create disklabel.\n");
+        return ok ? 0 : 1;
+    }
 
+    if (action == "--create-partition" && argc >= 6) {
+        int diskIndex = std::stoi(argv[2]);
+        uint64_t startSec = std::stoull(argv[3]);
+        uint64_t secCount = std::stoull(argv[4]);
+        std::string flagType = argv[5];
+        std::wstring partName = (argc >= 7) ? std::wstring(argv[6], argv[6] + strlen(argv[6])) : L"";
+        std::cout << "[*] Creating partition on Disk " << diskIndex << " from sector " << startSec << " (" << secCount << " sectors)...\n";
+        bool ok = WParted::WParted_Win32_Core::Instance().CreatePartition(diskIndex, startSec, secCount, flagType, partName);
+        std::cout << (ok ? "[+] Partition created successfully.\n" : "[!] Failed to create partition.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--delete-partition" && argc >= 4) {
+        int diskIndex = std::stoi(argv[2]);
+        int partNum = std::stoi(argv[3]);
+        std::cout << "[*] Deleting partition " << partNum << " on Disk " << diskIndex << "...\n";
+        bool ok = WParted::WParted_Win32_Core::Instance().DeletePartition(diskIndex, partNum);
+        std::cout << (ok ? "[+] Partition deleted successfully.\n" : "[!] Failed to delete partition.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--format" && argc >= 5) {
+        int diskIndex = std::stoi(argv[2]);
+        int partNum = std::stoi(argv[3]);
+        std::string fsType = argv[4];
+        std::string label = (argc >= 6) ? argv[5] : "";
+        std::cout << "[*] Formatting Disk " << diskIndex << " Partition " << partNum << " as " << fsType << "...\n";
+        auto cb = [](int pct, const std::string& msg) {
+            std::cout << "\r    Progress: " << pct << "% - " << msg << std::flush;
+        };
+        bool ok = WParted::WParted_Win32_Core::Instance().FormatFileSystem(diskIndex, partNum, fsType, label, cb);
+        std::cout << "\n" << (ok ? "[+] Format completed successfully.\n" : "[!] Format failed.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--resize" && argc >= 5) {
+        int diskIndex = std::stoi(argv[2]);
+        int partNum = std::stoi(argv[3]);
+        uint64_t newSizeBytes = std::stoull(argv[4]);
+        std::cout << "[*] Resizing Disk " << diskIndex << " Partition " << partNum << " to "
+                  << WParted::DualNomenclature::FormatByteSize(newSizeBytes) << "...\n";
+        auto cb = [](int pct, const std::string& msg) {
+            std::cout << "\r    Progress: " << pct << "% - " << msg << std::flush;
+        };
+        bool ok = WParted::WParted_Win32_Core::Instance().ResizePartition(diskIndex, partNum, newSizeBytes, cb);
+        std::cout << "\n" << (ok ? "[+] Resize completed successfully.\n" : "[!] Resize failed.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--check" && argc >= 4) {
+        int diskIndex = std::stoi(argv[2]);
+        int partNum = std::stoi(argv[3]);
+        bool fixErrors = (argc >= 5 && std::string(argv[4]) == "--fix");
+        std::cout << "[*] Running filesystem check on Disk " << diskIndex << " Partition " << partNum << "...\n";
+        auto cb = [](int pct, const std::string& msg) {
+            std::cout << "\r    Progress: " << pct << "% - " << msg << std::flush;
+        };
+        bool ok = WParted::WParted_Win32_Core::Instance().CheckFileSystem(diskIndex, partNum, fixErrors, cb);
+        std::cout << "\n" << (ok ? "[+] Filesystem check completed successfully.\n" : "[!] Check reported errors or failed.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--toggle-flag" && argc >= 6) {
+        int diskIndex = std::stoi(argv[2]);
+        int partNum = std::stoi(argv[3]);
+        std::string flag = argv[4];
+        bool state = (std::stoi(argv[5]) != 0);
+        std::cout << "[*] Setting flag '" << flag << "' = " << (state ? "on" : "off")
+                  << " on Disk " << diskIndex << " Partition " << partNum << "...\n";
+        bool ok = WParted::WParted_Win32_Core::Instance().ToggleFlag(diskIndex, partNum, flag, state);
+        std::cout << (ok ? "[+] Flag updated successfully.\n" : "[!] Failed to update flag.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--schedule-boot" && argc >= 7) {
+        WParted::BootJobOperation op = { 0 };
+        op.opType = WParted::BOOT_OP_MOVE_SECTORS;
+        op.diskIndex = static_cast<uint32_t>(std::stoul(argv[2]));
+        op.sourceSector = std::stoull(argv[3]);
+        op.targetSector = std::stoull(argv[4]);
+        op.sectorCount = std::stoull(argv[5]);
+        op.sectorSize = static_cast<uint32_t>(std::stoul(argv[6]));
+
+        std::cout << "[*] Scheduling native boot-time sector relocation on reboot...\n";
+        bool ok = WParted::WParted_Boot_Scheduler::ScheduleBootJob({ op });
+        std::cout << (ok ? "[+] Boot job scheduled successfully in BootExecute.\n" : "[!] Failed to schedule boot job.\n");
+        return ok ? 0 : 1;
+    }
+
+    if (action == "--cancel-boot") {
+        std::cout << "[*] Canceling scheduled boot jobs and cleaning BootExecute...\n";
+        bool ok = WParted::WParted_Boot_Scheduler::CancelBootJob();
+        std::cout << (ok ? "[+] Scheduled boot job cancelled.\n" : "[!] Failed to cancel boot job.\n");
+        return ok ? 0 : 1;
+    }
     // Default: List all disks and partitions using Dual Nomenclature
     std::cout << "[*] Scanning physical storage devices...\n\n";
     auto drives = WParted::WParted_Win32_Core::Instance().ScanDevices();

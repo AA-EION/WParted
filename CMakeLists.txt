@@ -62,6 +62,7 @@ set(WPARTED_CORE_SOURCES
     src/WParted_WSL_Bridge.cc
     src/ApfsDriver.cc
     src/WParted_Boot_Scheduler.cc
+    src/PartedWin32Bridge.cc
 )
 
 # Core headers
@@ -78,6 +79,9 @@ set(WPARTED_CORE_HEADERS
     include/ApfsStructures.h
     include/WParted_Boot_Job.h
     include/WParted_Boot_Scheduler.h
+    include/parted/parted.h
+    include/endian.h
+    include/unistd.h
 )
 
 add_library(wparted_core STATIC

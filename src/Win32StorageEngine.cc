@@ -15,6 +15,7 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <objbase.h>
 #include <winioctl.h>
 #include <setupapi.h>
 #include <initguid.h>
@@ -276,6 +277,11 @@ bool Win32StorageEngine::ReadDriveLayout(int diskIndex, Win32DiskDrive& disk)
     if (pLayout->PartitionStyle == PARTITION_STYLE_GPT) {
         disk.isGpt = true;
         disk.isMbr = false;
+        disk.gptDiskId = pLayout->Gpt.DiskId;
+        disk.gptStartingUsableOffset = static_cast<uint64_t>(pLayout->Gpt.StartingUsableOffset.QuadPart);
+        disk.gptUsableLength = static_cast<uint64_t>(pLayout->Gpt.UsableLength.QuadPart);
+        disk.gptMaxPartitionCount = pLayout->Gpt.MaxPartitionCount;
+
         for (DWORD i = 0; i < pLayout->PartitionCount; ++i) {
             const PARTITION_INFORMATION_EX& entry = pLayout->PartitionEntry[i];
             if (entry.PartitionLength.QuadPart == 0) continue;
@@ -297,6 +303,8 @@ bool Win32StorageEngine::ReadDriveLayout(int diskIndex, Win32DiskDrive& disk)
     } else if (pLayout->PartitionStyle == PARTITION_STYLE_MBR) {
         disk.isGpt = false;
         disk.isMbr = true;
+        disk.mbrSignature = pLayout->Mbr.Signature;
+
         for (DWORD i = 0; i < pLayout->PartitionCount; ++i) {
             const PARTITION_INFORMATION_EX& entry = pLayout->PartitionEntry[i];
             if (entry.PartitionLength.QuadPart == 0 || entry.Mbr.PartitionType == 0) continue;
@@ -344,18 +352,33 @@ bool Win32StorageEngine::WriteDriveLayout(int diskIndex, const Win32DiskDrive& d
     }
 
     size_t count = disk.partitions.size();
-    size_t bufSize = sizeof(DRIVE_LAYOUT_INFORMATION_EX) + count * sizeof(PARTITION_INFORMATION_EX);
+    DWORD partitionCount = static_cast<DWORD>(count);
+    if (!disk.isGpt) {
+        // Windows IOCTL_DISK_SET_DRIVE_LAYOUT_EX strictly requires MBR PartitionCount to be a multiple of 4
+        partitionCount = static_cast<DWORD>(((count + 3) / 4) * 4);
+        if (partitionCount < 4) partitionCount = 4;
+    }
+
+    size_t bufSize = sizeof(DRIVE_LAYOUT_INFORMATION_EX) + partitionCount * sizeof(PARTITION_INFORMATION_EX);
     std::vector<BYTE> buffer(bufSize, 0);
     PDRIVE_LAYOUT_INFORMATION_EX pLayout = reinterpret_cast<PDRIVE_LAYOUT_INFORMATION_EX>(buffer.data());
 
     pLayout->PartitionStyle = disk.isGpt ? PARTITION_STYLE_GPT : PARTITION_STYLE_MBR;
-    pLayout->PartitionCount = static_cast<DWORD>(count);
+    pLayout->PartitionCount = partitionCount;
 
     if (disk.isGpt) {
-        pLayout->Gpt.DiskId = GUID_PARTITION_BASIC_DATA;
-        pLayout->Gpt.StartingUsableOffset.QuadPart = 34 * disk.logicalSectorSize;
-        pLayout->Gpt.UsableLength.QuadPart = disk.totalSizeBytes - (68 * disk.logicalSectorSize);
-        pLayout->Gpt.MaxPartitionCount = 128;
+        // Preserve original GPT DiskId or generate a unique random GUID (prevents Windows BCD boot failure)
+        pLayout->Gpt.DiskId = disk.gptDiskId;
+        if (DualNomenclature::AreGuidsEqual(pLayout->Gpt.DiskId, { 0 })) {
+            CoCreateGuid(&pLayout->Gpt.DiskId);
+        }
+
+        uint32_t secSize = disk.logicalSectorSize ? disk.logicalSectorSize : 512;
+        pLayout->Gpt.StartingUsableOffset.QuadPart = disk.gptStartingUsableOffset > 0 ?
+            static_cast<LONGLONG>(disk.gptStartingUsableOffset) : static_cast<LONGLONG>(34 * secSize);
+        pLayout->Gpt.UsableLength.QuadPart = disk.gptUsableLength > 0 ?
+            static_cast<LONGLONG>(disk.gptUsableLength) : static_cast<LONGLONG>(disk.totalSizeBytes - (68 * secSize));
+        pLayout->Gpt.MaxPartitionCount = disk.gptMaxPartitionCount > 0 ? disk.gptMaxPartitionCount : 128;
 
         for (size_t i = 0; i < count; ++i) {
             const auto& src = disk.partitions[i];
@@ -367,11 +390,15 @@ bool Win32StorageEngine::WriteDriveLayout(int diskIndex, const Win32DiskDrive& d
             dst.RewritePartition = TRUE;
             dst.Gpt.PartitionType = src.gptTypeGuid;
             dst.Gpt.PartitionId = src.gptIdGuid;
+            if (DualNomenclature::AreGuidsEqual(dst.Gpt.PartitionId, { 0 })) {
+                CoCreateGuid(&dst.Gpt.PartitionId);
+            }
             dst.Gpt.Attributes = src.gptAttributes;
             wcsncpy_s(dst.Gpt.Name, src.gptName.c_str(), 36);
         }
     } else {
-        pLayout->Mbr.Signature = 0x57504152; // 'WPAR'
+        // Preserve MBR disk signature
+        pLayout->Mbr.Signature = disk.mbrSignature != 0 ? disk.mbrSignature : static_cast<DWORD>(GetTickCount64() ^ 0x57504152);
         for (size_t i = 0; i < count; ++i) {
             const auto& src = disk.partitions[i];
             auto& dst = pLayout->PartitionEntry[i];
@@ -383,6 +410,17 @@ bool Win32StorageEngine::WriteDriveLayout(int diskIndex, const Win32DiskDrive& d
             dst.Mbr.PartitionType = src.mbrType;
             dst.Mbr.BootIndicator = src.mbrBootIndicator ? TRUE : FALSE;
             dst.Mbr.RecognizedPartition = TRUE;
+        }
+        for (size_t i = count; i < partitionCount; ++i) {
+            auto& dst = pLayout->PartitionEntry[i];
+            dst.PartitionStyle = PARTITION_STYLE_MBR;
+            dst.StartingOffset.QuadPart = 0;
+            dst.PartitionLength.QuadPart = 0;
+            dst.PartitionNumber = 0;
+            dst.RewritePartition = FALSE;
+            dst.Mbr.PartitionType = 0; // PARTITION_ENTRY_UNUSED
+            dst.Mbr.BootIndicator = FALSE;
+            dst.Mbr.RecognizedPartition = FALSE;
         }
     }
 
@@ -422,10 +460,10 @@ bool Win32StorageEngine::InitializeDisk(int diskIndex, bool asGpt)
     CREATE_DISK createDisk = { 0 };
     createDisk.PartitionStyle = asGpt ? PARTITION_STYLE_GPT : PARTITION_STYLE_MBR;
     if (asGpt) {
-        createDisk.Gpt.DiskId = GUID_PARTITION_BASIC_DATA;
+        CoCreateGuid(&createDisk.Gpt.DiskId);
         createDisk.Gpt.MaxPartitionCount = 128;
     } else {
-        createDisk.Mbr.Signature = 0x57504152;
+        createDisk.Mbr.Signature = static_cast<DWORD>(GetTickCount64() ^ 0x57504152);
     }
 
     DWORD bytesReturned = 0;
@@ -487,7 +525,7 @@ bool Win32StorageEngine::CreatePartition(int diskIndex,
     newPart.partitionLength = length;
     newPart.isGpt = disk.isGpt;
     newPart.gptTypeGuid = typeGuid;
-    newPart.gptIdGuid = GUID_PARTITION_BASIC_DATA;
+    CoCreateGuid(&newPart.gptIdGuid);
     newPart.gptName = name;
     newPart.flags = DualNomenclature::GptToLinuxFlags(typeGuid, 0);
 

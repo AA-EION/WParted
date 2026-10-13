@@ -10,6 +10,7 @@
 #include <sstream>
 #include <regex>
 #include <vector>
+#include <algorithm>
 #include <thread>
 #include <chrono>
 
@@ -243,22 +244,44 @@ bool WParted_WSL_Bridge::UnmountBareDisk(int diskIndex, const std::string& mappe
 
 std::string WParted_WSL_Bridge::FindLinuxDeviceNode(int diskIndex, uint64_t byteOffset, const std::string& serialNumber)
 {
-    (void)diskIndex; (void)byteOffset; (void)serialNumber;
-    // Query /proc/partitions or /sys/block to find the corresponding device
-    std::string out, err;
-    if (ExecuteCommand("lsblk -dpno NAME,SIZE,SERIAL 2>/dev/null || cat /proc/partitions", out, err)) {
-        std::istringstream iss(out);
-        std::string line;
-        while (std::getline(iss, line)) {
-            if (line.find("/dev/sd") != std::string::npos) {
-                std::istringstream words(line);
-                std::string devName;
-                words >> devName;
-                return devName;
+    (void)byteOffset;
+    // 1. If serial number is available, look for exact serial match in lsblk
+    if (!serialNumber.empty()) {
+        std::string out, err;
+        if (ExecuteCommand("lsblk -dpno NAME,SERIAL 2>/dev/null", out, err)) {
+            std::istringstream iss(out);
+            std::string devName, ser;
+            while (iss >> devName >> ser) {
+                if (ser.find(serialNumber) != std::string::npos || serialNumber.find(ser) != std::string::npos) {
+                    return devName;
+                }
             }
         }
     }
-    return "/dev/sdb";
+
+    // 2. Discover all attached storage block devices in WSL2
+    std::string out, err;
+    if (ExecuteCommand("lsblk -dpno NAME 2>/dev/null", out, err)) {
+        std::istringstream iss(out);
+        std::string devName;
+        std::vector<std::string> devices;
+        while (iss >> devName) {
+            if (devName.find("/dev/sd") != std::string::npos || devName.find("/dev/nvme") != std::string::npos) {
+                devices.push_back(devName);
+            }
+        }
+        // In WSL2, /dev/sda is typically the rootfs. Physical drives attached via --bare start at /dev/sdb
+        if (diskIndex >= 0 && static_cast<size_t>(diskIndex + 1) < devices.size()) {
+            return devices[diskIndex + 1];
+        }
+        if (!devices.empty()) {
+            return devices.back();
+        }
+    }
+
+    // Fallback: predictable node based on diskIndex
+    char diskLetter = static_cast<char>('b' + (diskIndex > 0 ? (diskIndex - 1) : 0));
+    return std::string("/dev/sd") + diskLetter;
 }
 
 int WParted_WSL_Bridge::ParseProgressPercentage(const std::string& line)
@@ -316,32 +339,72 @@ bool WParted_WSL_Bridge::ExecuteCommand(const std::string& command,
     DWORD bytesRead = 0;
     std::string currentLine;
 
-    while (ReadFile(hReadOut, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        stdOut += buffer;
+    // Concurrent non-blocking drainage of stdout and stderr to prevent pipe deadlocks
+    bool processRunning = true;
+    while (processRunning) {
+        bool hadActivity = false;
 
-        for (DWORD i = 0; i < bytesRead; ++i) {
-            char c = buffer[i];
-            if (c == '\n' || c == '\r') {
-                if (!currentLine.empty()) {
-                    int pct = ParseProgressPercentage(currentLine);
-                    if (callback && pct >= 0) {
-                        callback(pct, currentLine);
+        // Drain stdout
+        DWORD availOut = 0;
+        if (PeekNamedPipe(hReadOut, NULL, 0, NULL, &availOut, NULL) && availOut > 0) {
+            DWORD toRead = (std::min)(availOut, static_cast<DWORD>(sizeof(buffer) - 1));
+            if (ReadFile(hReadOut, buffer, toRead, &bytesRead, NULL) && bytesRead > 0) {
+                buffer[bytesRead] = '\0';
+                stdOut += buffer;
+                hadActivity = true;
+
+                for (DWORD i = 0; i < bytesRead; ++i) {
+                    char c = buffer[i];
+                    if (c == '\n' || c == '\r') {
+                        if (!currentLine.empty()) {
+                            int pct = ParseProgressPercentage(currentLine);
+                            if (callback && pct >= 0) {
+                                callback(pct, currentLine);
+                            }
+                            currentLine.clear();
+                        }
+                    } else {
+                        currentLine += c;
                     }
-                    currentLine.clear();
                 }
-            } else {
-                currentLine += c;
             }
+        }
+
+        // Drain stderr
+        DWORD availErr = 0;
+        if (PeekNamedPipe(hReadErr, NULL, 0, NULL, &availErr, NULL) && availErr > 0) {
+            DWORD toRead = (std::min)(availErr, static_cast<DWORD>(sizeof(buffer) - 1));
+            if (ReadFile(hReadErr, buffer, toRead, &bytesRead, NULL) && bytesRead > 0) {
+                buffer[bytesRead] = '\0';
+                stdErr += buffer;
+                hadActivity = true;
+            }
+        }
+
+        // Check process status
+        DWORD waitRes = WaitForSingleObject(pi.hProcess, 0);
+        if (waitRes == WAIT_OBJECT_0) {
+            // Process terminated; do one final drain
+            while (PeekNamedPipe(hReadOut, NULL, 0, NULL, &availOut, NULL) && availOut > 0) {
+                DWORD toRead = (std::min)(availOut, static_cast<DWORD>(sizeof(buffer) - 1));
+                if (ReadFile(hReadOut, buffer, toRead, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    stdOut += buffer;
+                } else break;
+            }
+            while (PeekNamedPipe(hReadErr, NULL, 0, NULL, &availErr, NULL) && availErr > 0) {
+                DWORD toRead = (std::min)(availErr, static_cast<DWORD>(sizeof(buffer) - 1));
+                if (ReadFile(hReadErr, buffer, toRead, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    stdErr += buffer;
+                } else break;
+            }
+            processRunning = false;
+        } else if (!hadActivity) {
+            Sleep(10);
         }
     }
 
-    while (ReadFile(hReadErr, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        stdErr += buffer;
-    }
-
-    WaitForSingleObject(pi.hProcess, INFINITE);
     DWORD exitCode = 0;
     GetExitCodeProcess(pi.hProcess, &exitCode);
 

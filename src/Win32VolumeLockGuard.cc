@@ -16,6 +16,13 @@
 #include <winioctl.h>
 #include <restartmanager.h>
 #pragma comment(lib, "rstrtmgr.lib")
+
+#ifndef MOUNTMGRCONTROLTYPE
+#define MOUNTMGRCONTROLTYPE 0x0000006d
+#endif
+#ifndef IOCTL_MOUNTMGR_ONLINE
+#define IOCTL_MOUNTMGR_ONLINE CTL_CODE(MOUNTMGRCONTROLTYPE, 2, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#endif
 #endif
 
 namespace WParted
@@ -168,6 +175,35 @@ void Win32VolumeLockGuard::Unlock()
         CloseHandle(m_hVolume);
         m_hVolume = INVALID_HANDLE_VALUE;
     }
+
+    if (m_isDismounted && !m_volumePath.empty()) {
+        // Step 5: Release and re-mount via MountMgr upon completion
+        HANDLE hMountMgr = CreateFileW(
+            L"\\\\.\\MountPointManager",
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            NULL,
+            OPEN_EXISTING,
+            0,
+            NULL
+        );
+        if (hMountMgr != INVALID_HANDLE_VALUE) {
+            struct {
+                USHORT SymbolicLinkNameOffset;
+                USHORT SymbolicLinkNameLength;
+                WCHAR  DeviceName[MAX_PATH];
+            } onlineInput = { 0 };
+            DWORD bytesReturned = 0;
+            DeviceIoControl(hMountMgr, IOCTL_MOUNTMGR_ONLINE, &onlineInput, sizeof(onlineInput), NULL, 0, &bytesReturned, NULL);
+            CloseHandle(hMountMgr);
+        }
+
+        // Touch volume root to trigger filesystem driver re-mount
+        std::wstring root = m_volumePath;
+        if (!root.empty() && root.back() != L'\\') root += L'\\';
+        GetFileAttributesW(root.c_str());
+    }
+
     m_isDismounted = false;
 #endif
 }

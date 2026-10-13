@@ -95,6 +95,113 @@ NTSTATUS NTAPI NtTerminateProcess(
     NTSTATUS ExitStatus
 );
 
+typedef enum _KEY_VALUE_INFORMATION_CLASS {
+    KeyValueBasicInformation,
+    KeyValueFullInformation,
+    KeyValuePartialInformation,
+    KeyValueFullInformationAlign64,
+    KeyValuePartialInformationAlign64,
+    MaxKeyValueInfoClass
+} KEY_VALUE_INFORMATION_CLASS;
+
+typedef struct _KEY_VALUE_PARTIAL_INFORMATION {
+    ULONG TitleIndex;
+    ULONG Type;
+    ULONG DataLength;
+    UCHAR Data[1];
+} KEY_VALUE_PARTIAL_INFORMATION, *PKEY_VALUE_PARTIAL_INFORMATION;
+
+NTSTATUS NTAPI NtOpenKey(
+    PHANDLE KeyHandle,
+    ACCESS_MASK DesiredAccess,
+    POBJECT_ATTRIBUTES ObjectAttributes
+);
+
+NTSTATUS NTAPI NtQueryValueKey(
+    HANDLE KeyHandle,
+    PUNICODE_STRING ValueName,
+    KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,
+    PVOID KeyValueInformation,
+    ULONG Length,
+    PULONG ResultLength
+);
+
+NTSTATUS NTAPI NtSetValueKey(
+    HANDLE KeyHandle,
+    PUNICODE_STRING ValueName,
+    ULONG TitleIndex,
+    ULONG Type,
+    PVOID Data,
+    ULONG DataSize
+);
+
+}
+
+static void RemoveFromBootExecuteNative()
+{
+    UNICODE_STRING keyPath;
+    RtlInitUnicodeString(&keyPath, L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Control\\Session Manager");
+
+    OBJECT_ATTRIBUTES objAttr;
+    InitializeObjectAttributes(&objAttr, &keyPath, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+    HANDLE hKey = NULL;
+    NTSTATUS status = NtOpenKey(&hKey, KEY_READ | KEY_WRITE, &objAttr);
+    if (!NT_SUCCESS(status)) {
+        return;
+    }
+
+    UNICODE_STRING valName;
+    RtlInitUnicodeString(&valName, L"BootExecute");
+
+    static uint8_t buffer[2048] = { 0 };
+    ULONG resultLength = 0;
+
+    status = NtQueryValueKey(hKey, &valName, KeyValuePartialInformation, buffer, sizeof(buffer), &resultLength);
+    if (NT_SUCCESS(status)) {
+        PKEY_VALUE_PARTIAL_INFORMATION pInfo = reinterpret_cast<PKEY_VALUE_PARTIAL_INFORMATION>(buffer);
+        if (pInfo->Type == REG_MULTI_SZ) {
+            const wchar_t* p = reinterpret_cast<const wchar_t*>(pInfo->Data);
+            const wchar_t* end = reinterpret_cast<const wchar_t*>(pInfo->Data + pInfo->DataLength);
+
+            static wchar_t newMultiSz[1024] = { 0 };
+            int newIdx = 0;
+
+            while (p < end && *p) {
+                bool matches = false;
+                const wchar_t* check = p;
+                const wchar_t needle[] = L"wparted-boot";
+                while (*check) {
+                    int k = 0;
+                    while (needle[k] && check[k] && (check[k] == needle[k] || check[k] + 32 == needle[k])) {
+                        k++;
+                    }
+                    if (needle[k] == L'\0') {
+                        matches = true;
+                        break;
+                    }
+                    check++;
+                }
+
+                int len = 0;
+                while (p[len]) len++;
+
+                if (!matches) {
+                    for (int c = 0; c < len; ++c) {
+                        newMultiSz[newIdx++] = p[c];
+                    }
+                    newMultiSz[newIdx++] = L'\0';
+                }
+                p += len + 1;
+            }
+
+            newMultiSz[newIdx++] = L'\0'; // Final null for REG_MULTI_SZ
+            ULONG newSize = newIdx * sizeof(wchar_t);
+            NtSetValueKey(hKey, &valName, 0, REG_MULTI_SZ, newMultiSz, newSize);
+        }
+    }
+
+    NtClose(hKey);
 }
 
 static void UIntToWString(uint32_t val, wchar_t* buf)
@@ -193,11 +300,22 @@ extern "C" void NTAPI NtProcessStartup(void* Argument)
     if (!NT_SUCCESS(status) || header.magic != WParted::BOOT_JOB_MAGIC || header.opCount == 0) {
         PrintBootString(L"Error: Corrupted WParted job file header.\n");
         NtDeleteFile(&objAttr);
+        RemoveFromBootExecuteNative();
         NtTerminateProcess(NtCurrentProcess(), 0);
         return;
     }
 
-    PrintBootString(L"Verifying CRC64 integrity of scheduled operations... OK.\n");
+    // Verify CRC64 of the operations payload
+    uint64_t expectedCrc = WParted::CalculateCRC64(header.operations, header.opCount * sizeof(WParted::BootJobOperation));
+    if (header.headerCrc64 != expectedCrc) {
+        PrintBootString(L"Error: Job CRC64 checksum mismatch. Relocation aborted for safety.\n");
+        NtDeleteFile(&objAttr);
+        RemoveFromBootExecuteNative();
+        NtTerminateProcess(NtCurrentProcess(), 0);
+        return;
+    }
+
+    PrintBootString(L"CRC64 integrity of scheduled operations: Verified OK.\n");
 
     for (uint32_t i = 0; i < header.opCount; ++i) {
         const auto& op = header.operations[i];
@@ -232,12 +350,26 @@ extern "C" void NTAPI NtProcessStartup(void* Argument)
         uint64_t bytesProcessed = 0;
         uint32_t chunkSize = sizeof(g_sectorBuffer);
 
+        // Safe overlap check: if moving towards higher LBAs (right), copy backwards from end to start
+        bool moveBackward = (op.targetSector > op.sourceSector);
+
         while (bytesProcessed < totalBytes) {
             uint64_t remaining = totalBytes - bytesProcessed;
             uint32_t bytesToCopy = (remaining < chunkSize) ? static_cast<uint32_t>(remaining) : chunkSize;
 
             LARGE_INTEGER srcOffset;
-            srcOffset.QuadPart = (op.sourceSector * sectorSize) + bytesProcessed;
+            LARGE_INTEGER dstOffset;
+
+            if (moveBackward) {
+                // Moving right: copy backwards from end to prevent overwriting source sectors
+                uint64_t currentOffset = totalBytes - bytesProcessed - bytesToCopy;
+                srcOffset.QuadPart = static_cast<LONGLONG>((op.sourceSector * sectorSize) + currentOffset);
+                dstOffset.QuadPart = static_cast<LONGLONG>((op.targetSector * sectorSize) + currentOffset);
+            } else {
+                // Moving left: copy forwards from start
+                srcOffset.QuadPart = static_cast<LONGLONG>((op.sourceSector * sectorSize) + bytesProcessed);
+                dstOffset.QuadPart = static_cast<LONGLONG>((op.targetSector * sectorSize) + bytesProcessed);
+            }
 
             status = NtReadFile(
                 hDisk,
@@ -255,9 +387,6 @@ extern "C" void NTAPI NtProcessStartup(void* Argument)
                 PrintBootString(L"Error reading source sectors.\n");
                 break;
             }
-
-            LARGE_INTEGER dstOffset;
-            dstOffset.QuadPart = (op.targetSector * sectorSize) + bytesProcessed;
 
             status = NtWriteFile(
                 hDisk,
@@ -304,6 +433,9 @@ extern "C" void NTAPI NtProcessStartup(void* Argument)
 
     // Clean up job file
     NtDeleteFile(&objAttr);
+
+    // Clean up BootExecute entry from Windows registry
+    RemoveFromBootExecuteNative();
 
     PrintBootString(L"Windows will now continue startup.\n\n");
     NtTerminateProcess(NtCurrentProcess(), 0);
