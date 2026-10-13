@@ -1,0 +1,318 @@
+/* WParted — Native Windows Partition Editor (Forked from GParted)
+ * Copyright (C) 2026 WParted Contributors
+ *
+Copyright (C) 2004 Bart
+ * Copyright (C) 2008, 2009, 2010 Curtis Gedak
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+#include "TreeView_Detail.h"
+
+#include "Partition.h"
+#include "PartitionVector.h"
+#include "Utils.h"
+
+#include <gdk/gdkevents.h>
+#include <gdkmm/pixbuf.h>
+#include <glibmm/miscutils.h>
+#include <glibmm/refptr.h>
+#include <glibmm/ustring.h>
+#include <gtkmm/object.h>
+#include <gtkmm/enums.h>
+#include <gtkmm/cellrendererpixbuf.h>
+#include <gtkmm/cellrenderertext.h>
+#include <gtkmm/stock.h>
+#include <gtkmm/treeiter.h>
+#include <gtkmm/treemodel.h>
+#include <gtkmm/treepath.h>
+#include <gtkmm/treestore.h>
+#include <gtkmm/treeview.h>
+#include <gtkmm/treeviewcolumn.h>
+#include <pangomm/layout.h>
+#include <sigc++/functors/mem_fun.h>
+#include <vector>
+
+
+namespace WParted
+{ 
+
+
+TreeView_Detail::TreeView_Detail()
+{
+	m_treestore_detail = Gtk::TreeStore::create(m_treeview_detail_columns);
+	set_model(m_treestore_detail);
+	set_rules_hint( true );
+	m_treeselection = get_selection();
+	m_treeselection->signal_changed().connect(sigc::mem_fun(*this, &TreeView_Detail::on_selection_changed));
+
+	// Add column 0: Partition
+	append_column(_("Partition"), m_treeview_detail_columns.path);
+	// Add icon cells.
+	get_column(0)->pack_start(m_treeview_detail_columns.icon2, false);
+	get_column(0)->pack_start(m_treeview_detail_columns.icon1, false);
+
+	// Add column 1: Name
+	append_column(_("Name"), m_treeview_detail_columns.name);
+
+	// Create "File System" column object
+	Gtk::TreeViewColumn* col = Gtk::manage(new Gtk::TreeViewColumn(_("File System")));
+	// Create cell renderer object for the pixbuf.
+	Gtk::CellRendererPixbuf* cell_renderer_pixbuf = Gtk::manage(new Gtk::CellRendererPixbuf());
+	// Color pixbuf cell is left aligned and packed without expanding.
+	cell_renderer_pixbuf->property_xalign() = 0.0;
+	col->pack_start(*cell_renderer_pixbuf, false);
+	// Bind color data model column to the packed pixbuf renderer.
+	col->add_attribute(cell_renderer_pixbuf->property_pixbuf(), m_treeview_detail_columns.color);
+	// Create cell renderer object for the text.
+	Gtk::CellRendererText* cell_renderer_text = Gtk::manage(new Gtk::CellRendererText());
+	// File system text cell is left aligned and packed with expanding to fill the available width.
+	cell_renderer_text->property_xalign() = 0.0;
+	col->pack_start(*cell_renderer_text, true);
+	// Bind file system data model column to the packed text renderer.
+	col->add_attribute(cell_renderer_text->property_text(), m_treeview_detail_columns.fsname);
+	// Set spacing between the two cells in the same column.
+	col->set_spacing(2);
+	// Add column 2: File System
+	append_column(*col);
+
+	// Add column 3: Mount Point
+	append_column(_("Mount Point"), m_treeview_detail_columns.mountpoint);
+	// Make column resizable and show too wide text with ellipsis.
+	get_column(3)->set_resizable(true);
+	cell_renderer_text = dynamic_cast<Gtk::CellRendererText *>(get_column(3)->get_first_cell());
+	cell_renderer_text->property_ellipsize() = Pango::ELLIPSIZE_END;
+
+	// Add column 4: Label
+	append_column(_("Label"), m_treeview_detail_columns.label);
+
+	// Add column 5: Size
+	append_column(_("Size"), m_treeview_detail_columns.size);
+	// Make column expanding and centre align the header text.
+	get_column(5)->set_expand(true);
+	get_column(5)->set_alignment(0.5);
+	// Set right alignment for numeric column data.
+	get_column_cell_renderer(5)->property_xalign() = 1.0;
+
+	// Add column 6: Used
+	append_column(_("Used"), m_treeview_detail_columns.used);
+	// Make column expanding and centre align the header text.
+	get_column(6)->set_expand(true);
+	get_column(6)->set_alignment(0.5);
+	// Set right alignment for numeric column data.
+	get_column_cell_renderer(6)->property_xalign() = 1.0;
+
+	// Add column 7: Unused
+	append_column(_("Unused"), m_treeview_detail_columns.unused);
+	// Make column expanding and centre align the header text.
+	get_column(7)->set_expand(true);
+	get_column(7)->set_alignment(0.5);
+	// Set right alignment for numeric column data.
+	get_column_cell_renderer(7)->property_xalign() = 1.0;
+
+	// Add column 8: Unused
+	append_column(_("Flags"), m_treeview_detail_columns.flags);
+	// Make column expanding and centre align the header text.
+	get_column(8)->set_expand(true);
+	get_column(8)->set_alignment(0.5);
+}
+
+
+void TreeView_Detail::load_partitions( const PartitionVector & partitions )
+{
+	bool show_names       = false;
+	bool show_mountpoints = false;
+	bool show_labels      = false;
+
+	m_block = true;
+	m_treestore_detail->clear();
+	m_block = false;
+
+	load_partitions( partitions, show_names, show_mountpoints, show_labels );
+
+	get_column( 1 )->set_visible( show_names );
+	get_column( 3 )->set_visible( show_mountpoints );
+	get_column( 4 )->set_visible( show_labels );
+
+	columns_autosize();
+	expand_all() ;
+}
+
+
+void TreeView_Detail::set_selected( const Partition * partition_ptr )
+{
+	m_block = true;
+	set_selected_by_ptn(m_treestore_detail->children(), partition_ptr);
+	m_block = false;
+}
+
+
+void TreeView_Detail::clear()
+{
+	m_treestore_detail->clear();
+}
+
+
+void TreeView_Detail::load_partitions( const PartitionVector & partitions,
+                                       bool & show_names,
+                                       bool & show_mountpoints,
+                                       bool & show_labels,
+                                       const Gtk::TreeRow & parent_row )
+{
+	Gtk::TreeRow row ;
+	for ( unsigned int i = 0 ; i < partitions .size() ; i++ ) 
+	{	
+		row = parent_row ? *(m_treestore_detail->append(parent_row.children()))
+		                 : *(m_treestore_detail->append());
+		create_row( row, partitions[i], show_names, show_mountpoints, show_labels );
+
+		if (partitions[i].type == TYPE_EXTENDED)
+			load_partitions( partitions[i].logicals, show_names, show_mountpoints, show_labels, row );
+	}
+}
+
+
+// Relabel the first column header.  Used to set "Partition" / "Logical Volume"
+// depending on whether a disk device or a Volume Group is being displayed.
+void TreeView_Detail::set_partition_column_title(const Glib::ustring& title)
+{
+	if (get_column(0) != nullptr)
+		get_column(0)->set_title(title);
+}
+
+
+bool TreeView_Detail::set_selected_by_ptn(Gtk::TreeModel::Children rows,
+                                          const Partition* partition_ptr, bool inside_extended)
+{
+	for ( unsigned int t = 0 ; t < rows .size() ; t++ )
+	{
+		if (*static_cast<const Partition*>(rows[t][m_treeview_detail_columns.partition_ptr]) == *partition_ptr)
+		{
+			if ( inside_extended )
+				expand_all() ;
+			
+			set_cursor( static_cast<Gtk::TreePath>( rows[ t ] ) ) ;
+			return true ;
+		}
+
+		if (set_selected_by_ptn(rows[t].children(), partition_ptr, true))
+			return true ;
+	}
+
+	return false ;
+}
+
+
+void TreeView_Detail::create_row( const Gtk::TreeRow & treerow,
+                                  const Partition & partition,
+                                  bool & show_names,
+                                  bool & show_mountpoints,
+                                  bool & show_labels )
+{
+	const Partition & filesystem_ptn = partition.get_filesystem_partition();
+	if ( filesystem_ptn.busy )
+		treerow[m_treeview_detail_columns.icon1] =
+		                Utils::mk_pixbuf(*this, Gtk::Stock::DIALOG_AUTHENTICATION, Gtk::ICON_SIZE_BUTTON);
+
+	if ( partition.have_messages() > 0 )
+	{
+		if (! static_cast<Glib::RefPtr<Gdk::Pixbuf>>(treerow[m_treeview_detail_columns.icon1]))
+			treerow[m_treeview_detail_columns.icon1] =
+			                Utils::mk_pixbuf(*this, Gtk::Stock::DIALOG_WARNING, Gtk::ICON_SIZE_BUTTON);
+		else
+			treerow[m_treeview_detail_columns.icon2] =
+			                Utils::mk_pixbuf(*this, Gtk::Stock::DIALOG_WARNING, Gtk::ICON_SIZE_BUTTON);
+	}
+
+	treerow[m_treeview_detail_columns.path] = partition.get_path();
+
+	//this fixes a weird issue (see #169683 for more info)
+	if (partition.type == TYPE_EXTENDED && partition.busy)
+		treerow[m_treeview_detail_columns.path] = treerow[m_treeview_detail_columns.path] + "   ";
+
+	// name
+	treerow[m_treeview_detail_columns.name] = partition.name;
+	if ( ! partition.name.empty() )
+		show_names = true;
+
+	// file system
+	treerow[m_treeview_detail_columns.color] = Utils::get_color_as_pixbuf(filesystem_ptn.fstype, 16, 16);
+	treerow[m_treeview_detail_columns.fsname] = partition.get_filesystem_string();
+
+	// mount point
+	const std::vector<Glib::ustring>& temp_mountpoints = filesystem_ptn.get_mountpoints();
+	treerow[m_treeview_detail_columns.mountpoint] = Glib::build_path( ", ", temp_mountpoints );
+	if ( ! temp_mountpoints.empty() )
+		show_mountpoints = true;
+
+	//label
+	const Glib::ustring& temp_filesystem_label = filesystem_ptn.get_filesystem_label();
+	treerow[m_treeview_detail_columns.label] = temp_filesystem_label;
+	if ( ! temp_filesystem_label.empty() )
+		show_labels = true;
+
+	//size
+	treerow[m_treeview_detail_columns.size] = Utils::format_size(partition.get_sector_length(), partition.sector_size);
+
+	//used
+	Sector used = partition .get_sectors_used() ;
+	treerow[m_treeview_detail_columns.used] =
+		used == -1 ? "---" : Utils::format_size( used, partition .sector_size ) ;
+
+	//unused
+	Sector unused = partition .get_sectors_unused() ;
+	treerow[m_treeview_detail_columns.unused] =
+		unused == -1 ? "---" : Utils::format_size( unused, partition .sector_size ) ;
+
+	//flags	
+	treerow[m_treeview_detail_columns.flags] = Glib::build_path(", ", partition.get_flags());
+
+	// Hidden column (pointer to partition object)
+	treerow[m_treeview_detail_columns.partition_ptr] = &partition;
+}
+
+
+bool TreeView_Detail::on_button_press_event( GdkEventButton * event )
+{
+	//Call base class, to allow normal handling,
+	bool handled = Gtk::TreeView::on_button_press_event( event ) ;
+
+	//right-click
+	if ( event ->button == 3 )  
+		signal_popup_menu .emit( event ->button, event ->time ) ;
+
+	return handled ;
+}
+
+void TreeView_Detail::on_row_activated( const Gtk::TreeModel::Path & path, Gtk::TreeViewColumn * column ) 
+{
+	//Call base class, to allow normal handling,
+	Gtk::TreeView::on_row_activated( path, column ) ;
+
+	signal_partition_activated .emit() ;
+}
+
+
+void TreeView_Detail::on_selection_changed() 
+{
+	if (! m_block && m_treeselection->get_selected() != 0)
+	{
+		Gtk::TreeRow row = static_cast<Gtk::TreeRow>(*m_treeselection->get_selected());
+		signal_partition_selected.emit(row[m_treeview_detail_columns.partition_ptr], true);
+	}
+}
+
+	
+}  // namespace WParted

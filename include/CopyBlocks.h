@@ -1,0 +1,79 @@
+/* WParted — Native Windows Partition Editor (Forked from GParted)
+ * Copyright (C) 2026 WParted Contributors
+ *
+ Copyright (C) 2013 Phillip Susi
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef WPARTED_COPYBLOCKS_H
+#define WPARTED_COPYBLOCKS_H
+
+#include "OperationDetail.h"
+#include "Utils.h"
+
+#include <glibmm/ustring.h>
+#include <parted/parted.h>
+#include <vector>
+
+
+namespace WParted {
+
+
+class CopyBlocks
+{
+public:
+	CopyBlocks(const Glib::ustring& in_src_device,
+	           const Glib::ustring& in_dst_device,
+	           Sector               src_start,
+	           Sector               dst_start,
+	           Byte_Value           in_length,
+	           Byte_Value           in_blocksize,
+	           OperationDetail&     in_operationdetail,
+	           Byte_Value&          in_total_done,
+	           Byte_Value           in_total_length,
+	           bool                 cancel_safe);
+
+	bool set_progress_info();
+	bool copy();
+
+private:
+	void copy_thread();
+	void copy_block();
+	void set_cancel(bool force);
+
+	const Glib::ustring& src_device;
+	const Glib::ustring& dst_device;
+	Byte_Value           length        = 0;
+	Byte_Value           blocksize     = 0;
+	OperationDetail&     operationdetail;
+	Byte_Value&          total_done;
+	Byte_Value           total_length  = 0;
+	std::vector<char>    buf;
+	Byte_Value           done          = 0;
+	PedDevice*           lp_device_src = nullptr;
+	PedDevice*           lp_device_dst = nullptr;
+	Sector               offset_src    = 0;
+	Sector               offset_dst    = 0;
+	bool                 success       = false;
+	Glib::ustring        error_message;
+	bool                 cancel        = false;
+	bool                 cancel_safe   = false;
+};
+
+
+}  // namespace WParted
+
+
+#endif /* GPARTED_COPYBLOCKS_H */

@@ -1,0 +1,54 @@
+/* WParted — Native Windows Partition Editor (Forked from GParted)
+ * Copyright (C) 2026 WParted Contributors
+ *
+Copyright (C) 2004 Bart
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+#ifndef WPARTED_DIALOG_DISKLABEL_H
+#define WPARTED_DIALOG_DISKLABEL_H
+
+
+#include "Device.h"
+
+#include <gtkmm/dialog.h>
+#include <gtkmm/comboboxtext.h>
+#include <glibmm/ustring.h>
+#include <vector>
+
+
+namespace WParted
+{
+
+
+class Dialog_Disklabel : public Gtk::Dialog
+{
+public:
+	Dialog_Disklabel( const Device & device ) ;
+	~Dialog_Disklabel();
+
+	Glib::ustring Get_Disklabel( ) ;
+
+private:
+	Gtk::ComboBoxText          m_combo_labeltypes;
+	std::vector<Glib::ustring> m_labeltypes;
+};
+
+
+}  // namespace WParted
+
+
+#endif /* GPARTED_DIALOG_DISKLABEL_H */
