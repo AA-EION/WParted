@@ -1,0 +1,17 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define VERSION "@PROJECT_VERSION@"
+#define PACKAGE_NAME "@PROJECT_NAME@"
+#define PACKAGE_TARNAME "wparted"
+#define PACKAGE_VERSION "@PROJECT_VERSION@"
+#define PACKAGE_STRING "@PROJECT_NAME@ @PROJECT_VERSION@"
+#define PACKAGE_BUGREPORT "https://github.com/AA-EION/WParted/issues"
+#define PACKAGE_URL "https://github.com/AA-EION/WParted"
+#define GETTEXT_PACKAGE "wparted"
+#define GNOMELOCALEDIR "share/locale"
+
+#cmakedefine HAVE_CONFIG_H 1
+#cmakedefine ENABLE_NLS 1
+
+#endif // CONFIG_H

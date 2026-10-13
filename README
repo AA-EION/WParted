@@ -1,0 +1,294 @@
+GPARTED
+=======
+Gparted is the GNOME Partition Editor for creating, reorganizing, and
+deleting disk partitions.
+
+A hard disk is usually subdivided into one or more partitions.  These
+partitions are normally not re-sizable (making one smaller and the
+adjacent one larger.)  Gparted makes it possible for you to take a
+hard disk and change the partition organization, while preserving the
+partition contents.
+
+More specifically, Gparted enables you to create, destroy, resize,
+move, check, label, and copy partitions, and the file systems
+contained within.  This is useful for creating space for new operating
+systems, reorganizing disk usage, and mirroring one partition with
+another (disk imaging).
+
+Gparted can also be used with storage devices other than hard disks,
+such as USB flash drives, and memory cards.
+
+Visit https://gparted.org for more information.
+
+
+LICENSING
+---------
+GParted is released under the General Public License version 2, or (at
+your option) any later version.  (GPLv2+).  All files are released under
+the GPLv2+ unless explicitly licensed otherwise.
+
+The GParted Manual is released under the GNU Free Documentation License
+version 1.2 or any later version.  (GFDLv1.2+).
+
+Google Test C++ test framework is released under the 3-Clause BSD
+License.  (BSD-3-Clause).
+
+See these files for more details:
+   COPYING      - GNU General Public License version 2
+   COPYING-DOCS - GNU Free Documentation License version 1.2
+   lib/gtest/LICENSE
+                - 3-Clause BSD License
+
+
+NEWS
+----
+Information about changes to this release, and past releases can be
+found in the file:
+   NEWS
+
+
+INSTALL
+-------
+a. Pre-built Binary
+
+   Many GNU/Linux distributions already provide a pre-built binary
+   package for GParted.  Instructions on how to install GParted on
+   some distributions is given below:
+
+      RHEL
+      ----
+      su -
+      dnf install gparted
+
+      Debian or Ubuntu
+      ----------------
+      sudo apt install gparted
+
+      Fedora
+      ------
+      su -
+      dnf install gparted
+
+      OpenSUSE
+      --------
+      sudo zypper install gparted
+
+b. Building from Source
+
+   Briefly, build and install GParted into the default location of
+   /usr/local using:
+      ./configure
+      make
+      sudo make install
+      sudo install -m 644 org.gnome.gparted.policy \
+             /usr/share/polkit-1/actions/org.gnome.gparted.local.policy
+   This assumes all the dependencies are already installed, builds the
+   default configuration and polkit is being used as the graphical su
+   program.
+
+   The following dependencies are required to build GParted from source:
+      g++
+      make
+      parted
+      gnome-common
+      gtkmm3
+      gettext
+      polkit
+      yelp-tools         - required if help documentation is to be built
+
+   On RHEL, these dependencies may be obtained by running the following
+   command as root:
+      dnf install gnome-common yelp-tools glib2-devel gcc-c++ \
+                  libuuid-devel parted-devel gtkmm30-devel make \
+                  polkit-devel gettext-devel
+
+   On Debian or Ubuntu, these dependencies may be obtained by running
+   one of the following commands:
+     Either;
+      sudo apt build-dep gparted
+     Or;
+      sudo apt install build-essential gnome-common yelp-tools \
+                       libglib2.0-dev uuid-dev libparted-dev \
+                       libgtkmm-3.0-dev
+
+   Debian 13 and later and Ubuntu 24.04 LTS and later also require this
+   dependency installing:
+      sudo apt install libpolkit-gobject-1-dev
+
+   On Fedora, these dependencies may be obtained by running the
+   following command as root:
+      dnf install gnome-common yelp-tools glib2-devel gcc-c++ \
+                  libuuid-devel parted-devel gtkmm30-devel make \
+                  polkit-devel gettext-devel
+
+   On openSUSE, these dependencies may be obtained by running the
+   following commands:
+      sudo zypper install gnome-common gcc-c++ libuuid-devel \
+                          parted-devel gtkmm3-devel make polkit-devel
+
+   Again, build GParted with the default configuration and install into
+   the default location of /usr/local using:
+      ./configure
+      make
+      sudo make install
+
+   If you wish to build this package without the help documentation use
+   the --disable-doc flag:
+      E.g., ./configure --disable-doc
+
+   If you wish to build this package to use native libparted /dev/mapper
+   dmraid support use the --enable-libparted-dmraid flag:
+      E.g., ./configure --enable-libparted-dmraid
+
+   If you wish to build GParted to allow it to use xhost to grant root
+   access to the X11 server use the --enable-xhost-root flag.  This is
+   required to allow GParted to display under Wayland.
+      ./configure --enable-xhost-root
+
+   The list of graphical privilege escalation programs GParted checks
+   at runtime can be configured with the --with-gksuprogs option.  The
+   list is colon separated, and commands may include arguments.
+      E.g., ./configure --with-gksuprogs='pkexec --disable-internal-agent:gksudo:run0'
+
+   Please note that more than one configure flag can be used:
+      E.g., ./configure --disable-doc --enable-libparted-dmraid
+
+   The INSTALL file contains further GNU installation instructions.
+
+c. Installing polkit's Action File
+
+   GParted needs to run as root therefore it needs a graphical switch
+   user program to allow normal users to run it.  Most desktops now use
+   polkit as their preferred authorisation mechanism.  Therefore the
+   default build-time configuration makes GParted look for supported
+   graphical privilege escalation programs at runtime in preference
+   order: polkit's pkexec, gksudo, gksu, kdesudo, xdg-su, run0.  Also
+   polkit reads action files only from directory
+   /usr/share/polkit-1/actions.  Therefore it is likely that a polkit
+   action file will need to be installed into this directory.
+
+   When GParted is configured with prefix /usr (using command
+   ./configure --prefix=/usr) then make install will automatically
+   install the polkit action file into the correct directory and no
+   further steps need to be taken.  This is typically the case for
+   distribution builds of GParted.
+
+   However when GParted is configured with the default prefix of
+   /usr/local, or any prefix other than /usr, then the polkit action
+   file has to be manually installed into the correct directory.  Also
+   it should have a unique file name to avoid overwriting the action
+   file from the distribution's package.  Install the polkit action file
+   with a unique name including an extra ".local" in the name:
+
+      sudo install -m 644 org.gnome.gparted.policy \
+             /usr/share/polkit-1/actions/org.gnome.gparted.local.policy
+
+d. Building using a Specific (lib)parted Version
+
+   1) Download the parted version you wish to use (e.g., 3.2) from:
+
+      http://ftp.gnu.org/gnu/parted/
+
+   2) Build and install parted.
+
+      Extract parted tarball, configure, make, and sudo make install.
+      Note that by default this will install into /usr/local.
+
+   3) Set environment variables to inform the GParted build system to
+      use libparted from /usr/local:
+
+        export CPPFLAGS=-I/usr/local/include
+        export LDFLAGS=-L/usr/local/lib
+        export LD_RUN_PATH=/usr/local/lib
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+   4) Build gparted using steps listed above in "Building from Source".
+
+      Note that when you run ./configure you should see the specific
+      version of parted listed in the check for libparted >= 1.7.1.
+
+      You will also see the libparted version listed when running
+      gparted from the command line.
+
+
+DIRECTORIES
+------------
+data     - contains desktop icons
+
+doc      - contains manual page documentation
+
+help     - contains GParted Manual and international translations
+
+include  - contains source header files
+
+lib/gtest
+         - contains Google Test C++ test framework libraries
+
+m4       - contains macro files
+
+po       - contains international language translations
+
+src      - contains C++ source code
+
+
+DISTRIBUTION NOTES
+------------------
+GParted has the following dependencies.
+
+Mandatory dependencies:
+   GNU parted (library)     - Detect and manipulate devices and
+                              partition tables.  Detect file systems.
+   blkid      (command)     - Detect and query file systems and software
+                              storage components.
+   pidof      (command)
+   /proc      (mount point) - Read kernel information.
+
+Mandatory dependency on one of the following commands in order to launch
+the GParted application as root (also see configuration option
+--with-gksuprogs discussion above):
+   pkexec  (command)
+   gksudo  (command)
+   gksu    (command)
+   kdesudo (command)
+   xdg-su  (command)
+   run0    (command)
+
+Strongly recommended dependencies:
+   udevadm (command) - Wait for udev rule execution and query udev
+                       device properties.
+   dmsetup (command) - Administrate device mapper devices.
+
+Dependencies needed to support specific software storage components:
+   mdadm      (command) - Query SWRaid (Linux Software RAID).
+   lvm        (command) - Administrate LVM2 (Logical Volume Manager).
+   cryptsetup (command) - Administrate LUKS encrypted volumes.
+   dmraid     (command) - Administrate DMRaid (Device Mapper RAID).
+
+Dependencies needed to support specific file systems:
+   bcachefs-tools (package) - Bcachefs
+   btrfs-progs    (package) - Btrfs
+   e2fsprogs      (package) - Ext2, Ext3, Ext4
+   exfatprogs     (package) - exFAT
+   f2fs-tools     (package) - F2FS
+   dosfstools     (package) - FAT16/32
+   mtools         (package) - FAT16/32
+   hfsutils       (package) - HFS
+   hfsprogs       (package) - HFS+
+   jfsutils       (package) - JFS
+   nilfs-utils    (package) - NILFS2
+   ntfs-3g        (package) - NTFS
+   ntfsprogs      (package) - NTFS
+   reiser4progs   (package) - Reiser4
+   reiserfsprogs  (package) - ReiserFS
+   udftools       (package) - UDF
+   util-linux     (package) - Linux swap, Minix
+   xfsprogs       (package) - XFS
+   xfsdump        (package) - XFS
+
+Other optional components:
+   udisks2-inhibit (command) - Prevent file system automounting.
+   udisks          (command) - Prevent file system automounting.
+   yelp            (command) - Display help manual.
+   xhost           (command) - Grant root access to the X11 server (only
+                               when configured to do so).
+
