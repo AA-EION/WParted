@@ -37,8 +37,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "installwinfsp"; Description: "Install WinFsp (required for Read-Only APFS mounting)"; GroupDescription: "Storage Drivers:"; Flags: checked
-Name: "wslprovision"; Description: "Provision WParted WSL2 Linux Filesystem Bridge"; GroupDescription: "Linux Filesystem Support:"; Flags: checked
+Name: "installwinfsp"; Description: "Install WinFsp (required for Read-Only APFS mounting)"; GroupDescription: "Storage Drivers:"
+Name: "wslprovision"; Description: "Provision WParted WSL2 Linux Filesystem Bridge"; GroupDescription: "Linux Filesystem Support:"
 
 [Files]
 Source: "..\dist\WParted-portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
