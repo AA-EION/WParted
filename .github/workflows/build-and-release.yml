@@ -1,0 +1,143 @@
+name: Build, Test & Release WParted
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (MSVC & MSYS2 UCRT64)
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Set up MSYS2 with UCRT64 toolchain and GTKmm3
+      - name: Setup MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gtkmm3
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-glib2
+
+      # Setup MSVC Developer Environment
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # Install Inno Setup for Installer Generation
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      # Install WinFsp SDK
+      - name: Install WinFsp
+        run: choco install winfsp --no-progress -y
+
+      # Build Native Binaries with MSVC / CMake
+      - name: Configure CMake (MSVC)
+        run: |
+          cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build All Targets (MSVC)
+        run: |
+          cmake --build build --config Release --parallel
+
+      # Execute Unit Tests
+      - name: Run Unit Test Suite
+        run: |
+          .\build\Release\wparted_tests.exe
+
+      # Integration Tests on Virtual VHDX Loopback Disk
+      - name: Integration Test on VHDX Virtual Loopback Disk
+        shell: powershell
+        run: |
+          Write-Host "[*] Creating temporary 2GB VHDX loopback disk..."
+          $vhdPath = "$env:TEMP\wparted-test-disk.vhdx"
+          New-VHD -Path $vhdPath -SizeBytes 2GB -Dynamic
+          $disk = Mount-VHD -Path $vhdPath -PassThru | Get-Disk
+
+          Write-Host "[*] Initializing loopback disk as GPT..."
+          Initialize-Disk -Number $disk.Number -PartitionStyle GPT
+
+          Write-Host "[*] Creating test Basic Data Partition..."
+          $part = New-Partition -DiskNumber $disk.Number -UseMaximumSize -AssignDriveLetter
+          Format-Volume -DriveLetter $part.DriveLetter -FileSystem NTFS -NewFileSystemLabel "WPartedTest" -Confirm:$false
+
+          Write-Host "[*] Running WParted test CLI against VHDX disk..."
+          .\build\Release\wparted_tests.exe --gtest_filter=Win32StorageEngineTest.*
+
+          Write-Host "[*] Cleaning up VHDX loopback disk..."
+          Dismount-VHD -Path $vhdPath
+          Remove-Item -Path $vhdPath -Force
+
+      # Bundle Standalone Portable Distribution
+      - name: Bundle Standalone Windows Distribution
+        shell: powershell
+        run: |
+          .\scripts\bundle-windows.ps1 -BuildDir "build\Release" -Msys2Root "C:\msys64\ucrt64"
+
+      # Compile Inno Setup Installer
+      - name: Compile Inno Setup Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\wparted.iss
+
+      # Update SHA256SUMS with Installer
+      - name: Compute Checksums
+        shell: powershell
+        run: |
+          Get-ChildItem -Path dist\*.zip, dist\*.exe | ForEach-Object {
+            $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)"
+          } | Out-File -FilePath dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+
+      # Upload Artifacts to Workflow
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: WParted-win64-binaries
+          path: |
+            dist/*.zip
+            dist/*.exe
+            dist/SHA256SUMS.txt
+
+      # Create GitHub Pre-Release on main branch push or tag
+      - name: Create GitHub Pre-Release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: WParted Release ${{ github.ref_name }}
+          prerelease: true
+          draft: false
+          files: |
+            dist/*.zip
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          body: |
+            ## WParted — Native Windows Partition Editor (Forked from GParted)
+
+            ### Release Highlights
+            - **Preserved GParted UX Paradigm**: GTK visual partition bar, partition table list, alignment selectors, and pending operations queue.
+            - **Dual Nomenclature System**: Cross-platform device mapping (`\\.\PhysicalDrive0` <-> `/dev/sda`, `C:\` <-> `/dev/sda1`).
+            - **Pure Win32 Storage Engine (`WParted_Win32_Core`)**: Direct Windows Kernel DeviceIoControl, VDS COM, SetupDi, and RAII `Win32VolumeLockGuard`.
+            - **Live Online Shrink & Extend**: Resize running system volumes (`C:\`) live via VDS and `FSCTL_SHRINK_VOLUME`.
+            - **BitLocker Guard**: Protection state detection and seamless key suspension.
+            - **WSL2 Linux Bridge**: Native management of `ext2/3/4`, `btrfs`, `xfs`, `zfs`, `f2fs`, `linux-swap` via `wparted-wsl-engine`.
+            - **Read-Only APFS Driver**: Container inspection and read-only drive letter mounting via WinFsp.
+            - **Native Early Boot Helper (`wparted-boot.exe`)**: Locked system partition operations with CRC64 journaling.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
