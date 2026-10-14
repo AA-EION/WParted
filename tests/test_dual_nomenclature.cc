@@ -5,6 +5,7 @@
  */
 
 #include "DualNomenclature.h"
+#include <algorithm>
 #include <gtest/gtest.h>
 
 using namespace WParted;

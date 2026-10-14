@@ -19,8 +19,12 @@ Copyright (C) 2017 Mike Fleetwood
 
 #include "PasswordRAMStore.h"
 
-#include <stddef.h>
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
 #include <string.h>
 #include <glibmm/ustring.h>
 #include <iostream>
@@ -95,6 +99,17 @@ const size_t ProtectedMemSize = 4096;
 
 PWStore::PWStore()
 {
+#if defined(_WIN32)
+	protected_mem = (char*) VirtualAlloc(NULL, ProtectedMemSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	if (protected_mem != nullptr)
+	{
+		VirtualLock(protected_mem, ProtectedMemSize);
+	}
+	else
+	{
+		std::cerr << "No locked virtual memory for password RAM store" << std::endl;
+	}
+#else
 	// MAP_ANONYMOUS also ensures RAM is zero initialised.
 	protected_mem = (char*) mmap(nullptr, ProtectedMemSize, PROT_READ|PROT_WRITE,
 	                             MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
@@ -103,13 +118,21 @@ PWStore::PWStore()
 		protected_mem = nullptr;
 		std::cerr << "No locked virtual memory for password RAM store" << std::endl;
 	}
+#endif
 }
 
 PWStore::~PWStore()
 {
 	erase_all();
 	if (protected_mem != nullptr)
+	{
+#if defined(_WIN32)
+		VirtualUnlock(protected_mem, ProtectedMemSize);
+		VirtualFree(protected_mem, 0, MEM_RELEASE);
+#else
 		munmap( protected_mem, ProtectedMemSize );
+#endif
+	}
 }
 
 bool PWStore::insert( const Glib::ustring & key, const char * password )

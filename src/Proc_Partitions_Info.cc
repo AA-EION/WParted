@@ -21,6 +21,10 @@ Copyright (C) 2010 Curtis Gedak
 #include "BlockSpecial.h"
 #include "Utils.h"
 
+#if defined(_WIN32)
+#include "Win32StorageEngine.h"
+#endif
+
 #include <glibmm/ustring.h>
 #include <vector>
 #include <fstream>
@@ -93,6 +97,18 @@ void Proc_Partitions_Info::load_proc_partitions_info_cache()
 	all_entries_cache.clear();
 	device_paths_cache.clear();
 
+#if defined(_WIN32)
+	auto drives = Win32StorageEngine::Instance().EnumerateDisks();
+	for (const auto& d : drives) {
+		device_paths_cache.push_back(d.linuxDevPath);
+		BlockSpecial::register_block_special(d.linuxDevPath, 8 + d.diskIndex, 0);
+		all_entries_cache.push_back(BlockSpecial(d.linuxDevPath));
+		for (const auto& p : d.partitions) {
+			BlockSpecial::register_block_special(p.linuxDevPath, 8 + d.diskIndex, p.partitionNumber);
+			all_entries_cache.push_back(BlockSpecial(p.linuxDevPath));
+		}
+	}
+#else
 	std::ifstream proc_partitions( "/proc/partitions" ) ;
 	if ( proc_partitions )
 	{
@@ -122,6 +138,7 @@ void Proc_Partitions_Info::load_proc_partitions_info_cache()
 		}
 		proc_partitions .close() ;
 	}
+#endif
 }
 
 

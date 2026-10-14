@@ -40,7 +40,7 @@ Copyright (C) 2004 Bart 'plors' Hakvoort
 #include "SWRaid_Info.h"
 #include "Utils.h"
 #include "VGDevice.h"
-#include "../config.h"
+#include "config.h"
 #include "btrfs.h"
 
 #include <parted/parted.h>
@@ -4475,6 +4475,14 @@ bool WParted_Core::useable_device(const PedDevice* lp_device)
 {
 	g_assert(lp_device != nullptr);  // Bug: Not initialised by call to ped_device_get() or ped_device_get_next()
 
+#if defined(_WIN32)
+	std::vector<char> buf(lp_device->sector_size ? lp_device->sector_size : 512);
+	if (ped_device_read(lp_device, buf.data(), 0, 1))
+		return true;
+
+	// In read-only mode or without direct raw sector rights, device is still useable if detected by Win32StorageEngine
+	return (lp_device->length > 0);
+#else
 	std::vector<char> buf(lp_device->sector_size);
 
 	// Must be able to read from the first sector before the disk device is considered
@@ -4489,6 +4497,7 @@ bool WParted_Core::useable_device(const PedDevice* lp_device)
 	}
 
 	return success;
+#endif
 }
 
 
@@ -4604,10 +4613,14 @@ bool WParted_Core::commit_to_os( PedDisk* lp_disk, std::time_t timeout )
 
 void WParted_Core::settle_device( std::time_t timeout )
 {
+#if defined(_WIN32)
+	(void)timeout;
+#else
 	if (udevadm_found)
 		Utils::execute_command( "udevadm settle --timeout=" + Utils::num_to_str( timeout ) ) ;
 	else
 		sleep( timeout ) ;
+#endif
 }
 
 PedPartition* WParted_Core::get_lp_partition( const PedDisk* lp_disk, const Partition & partition )

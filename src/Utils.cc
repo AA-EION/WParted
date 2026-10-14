@@ -22,14 +22,24 @@ Copyright (C) 2004 Bart 'plors' Hakvoort
 #include "WParted_Core.h"
 #include "PipeCapture.h"
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <objbase.h>
+#endif
+
 #include <sstream>
 #include <fstream>
 #include <iomanip>
 #include <glibmm/regex.h>
 #include <locale.h>
+#ifndef _WIN32
 #include <uuid/uuid.h>
+#endif
 #include <cerrno>
+#ifndef _WIN32
 #include <sys/statvfs.h>
+#endif
 #include <glibmm/ustring.h>
 #include <glibmm/stringutils.h>
 #include <glibmm/shell.h>
@@ -42,7 +52,9 @@ Copyright (C) 2004 Bart 'plors' Hakvoort
 #include <sigc++/signal.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <string.h>
 #include <unistd.h>
 #include <algorithm>
@@ -108,7 +120,11 @@ void CommandStatus::execute_command_eof()
 
 static void set_C_locale()
 {
+#if defined(_WIN32)
+	_putenv("LC_ALL=C");
+#else
 	setenv("LC_ALL", "C", 1);
+#endif
 }
 
 
@@ -570,6 +586,10 @@ const Glib::ustring Utils::generate_encryption_mapping_name(const Glib::ustring&
 //Report whether or not the kernel supports a particular file system
 bool Utils::kernel_supports_fs( const Glib::ustring & fs )
 {
+#if defined(_WIN32)
+	(void)fs;
+	return true;
+#else
 	bool fs_supported = false ;
 
 	//Read /proc/filesystems and check for the file system name.
@@ -608,6 +628,7 @@ bool Utils::kernel_supports_fs( const Glib::ustring & fs )
 	}
 
 	return fs_supported ;
+#endif
 }
 
 //Report if kernel version is >= (major, minor, patch)
@@ -749,8 +770,10 @@ int Utils::execute_command( const Glib::ustring & command,
 		std::cerr << Utils::convert_ustring(e.what().raw()) << std::endl;
 		return Utils::get_failure_status( e );
 	}
+#ifndef _WIN32
 	fcntl( out, F_SETFL, O_NONBLOCK );
 	fcntl( err, F_SETFL, O_NONBLOCK );
+#endif
 	g_child_watch_add( pid, _store_exit_status, &status );
 	//Lock mutex so we have time to setup pipecapture for output and error streams
 	//  before connecting the input/output signal handler
@@ -801,6 +824,7 @@ int Utils::get_failure_status(const Glib::SpawnError& e)
 // status or 128 + signal number when terminated by a signal.
 int Utils::decode_wait_status( int wait_status )
 {
+#ifndef _WIN32
 	if ( WIFEXITED( wait_status ) )
 		return WEXITSTATUS( wait_status );
 	else if ( WIFSIGNALED( wait_status ) )
@@ -811,6 +835,9 @@ int Utils::decode_wait_status( int wait_status )
 	// called after the process has exited.
 	std::cerr << "Unexpected wait status " << wait_status << std::endl;
 	return 255;
+#else
+	return wait_status;
+#endif
 }
 
 
@@ -948,6 +975,17 @@ void Utils::split( const Glib::ustring& str,
 // Create a new UUID
 Glib::ustring Utils::generate_uuid(void)
 {
+#if defined(_WIN32)
+	GUID guid = {};
+	CoCreateGuid(&guid);
+	char buf[64];
+	std::snprintf(buf, sizeof(buf),
+		"%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+		guid.Data1, guid.Data2, guid.Data3,
+		guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
+		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+	return Glib::ustring(buf);
+#else
 	uuid_t uuid;
 	char uuid_str[UUID_STRING_LENGTH+1];
 
@@ -955,6 +993,7 @@ Glib::ustring Utils::generate_uuid(void)
 	uuid_unparse(uuid,uuid_str);
 
 	return uuid_str;
+#endif
 }
 
 //Wrapper around statvfs() system call to get mounted file system size
@@ -963,6 +1002,22 @@ int Utils::get_mounted_filesystem_usage( const Glib::ustring & mountpoint,
                                          Byte_Value & fs_size, Byte_Value & fs_free,
                                          Glib::ustring & error_message )
 {
+#if defined(_WIN32)
+	std::wstring wpath;
+	int len = MultiByteToWideChar(CP_UTF8, 0, mountpoint.c_str(), -1, NULL, 0);
+	if (len > 0) {
+		wpath.resize(len);
+		MultiByteToWideChar(CP_UTF8, 0, mountpoint.c_str(), -1, &wpath[0], len);
+	}
+	ULARGE_INTEGER freeBytesAvail, totalBytes, totalFreeBytes;
+	if (GetDiskFreeSpaceExW(wpath.c_str(), &freeBytesAvail, &totalBytes, &totalFreeBytes)) {
+		fs_size = static_cast<Byte_Value>(totalBytes.QuadPart);
+		fs_free = static_cast<Byte_Value>(totalFreeBytes.QuadPart);
+		return 0;
+	}
+	error_message = "GetDiskFreeSpaceEx failed";
+	return -1;
+#else
 	struct statvfs sfs ;
 	int ret ;
 	ret = statvfs( mountpoint .c_str(), &sfs ) ;
@@ -975,6 +1030,7 @@ int Utils::get_mounted_filesystem_usage( const Glib::ustring & mountpoint,
 		error_message = "statvfs(\"" + mountpoint + "\"): " + Glib::strerror( errno ) ;
 
 	return ret ;
+#endif
 }
 
 
@@ -1020,6 +1076,12 @@ Byte_Value Utils::ceil_size( Byte_Value value, Byte_Value rounding_size )
 //Read kernel version, reporting success or failure
 bool Utils::get_kernel_version( int & major_ver, int & minor_ver, int & patch_ver )
 {
+#if defined(_WIN32)
+	major_ver = 6;
+	minor_ver = 5;
+	patch_ver = 0;
+	return true;
+#else
 	static bool read_file = false ;
 	static int read_major_ver = 0 ;
 	static int read_minor_ver = 0 ;
@@ -1047,6 +1109,7 @@ bool Utils::get_kernel_version( int & major_ver, int & minor_ver, int & patch_ve
 		patch_ver = read_patch_ver ;
 	}
 	return success ;
+#endif
 }
 
 

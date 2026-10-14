@@ -32,9 +32,21 @@ Copyright (C) 2024 Mike Fleetwood
 #include <glibmm/shell.h>
 #include <glibmm/stringutils.h>
 #include <glibmm/ustring.h>
+#if !defined(_WIN32)
 #include <linux/fs.h>
-#include <stdio.h>
 #include <sys/ioctl.h>
+#else
+#ifndef FS_IOC_SETFSLABEL
+#define FS_IOC_SETFSLABEL 0
+#endif
+#ifndef FSLABEL_MAX
+#define FSLABEL_MAX 256
+#endif
+#ifndef ioctl
+#define ioctl(fd, req, ...) (-1)
+#endif
+#endif
+#include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 

@@ -66,7 +66,7 @@ FS fat16::get_filesystem_support()
 	FS fs(m_specific_fstype);
 
 	// hack to disable silly mtools warnings
-	setenv( "MTOOLS_SKIP_CHECK", "1", 0 );
+	Glib::setenv( "MTOOLS_SKIP_CHECK", "1", false );
 
 	fs .busy = FS::GPARTED ;
 

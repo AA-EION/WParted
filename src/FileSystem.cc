@@ -169,7 +169,11 @@ Glib::ustring FileSystem::mk_temp_dir( const Glib::ustring & infix, OperationDet
 	operationdetail .add_child( OperationDetail(
 			Glib::ustring( "mkdir -v " ) + dir_buf, STATUS_EXECUTE, FONT_BOLD_ITALIC ) ) ;
 	OperationDetail& child_od = operationdetail.get_last_child();
+#if defined(_WIN32)
+	if (mkdir(dir_buf) != 0)
+#else
 	if (mkdir(dir_buf, 0700) != 0)
+#endif
 	{
 		int e = errno ;
 		child_od.add_child(OperationDetail(

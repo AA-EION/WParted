@@ -52,7 +52,7 @@ Copyright (C) 2004 Bart
 #include "LUKS_Info.h"
 #include "Utils.h"
 #include "VGDevice.h"
-#include "../config.h"
+#include "config.h"
 
 #include <string.h>
 #include <gdkmm/cursor.h>
@@ -91,12 +91,12 @@ Win_WParted::Win_WParted( const std::vector<Glib::ustring> & user_devices )
 	gparted_core .set_user_devices( user_devices ) ;
 
 	//==== GUI =========================
-	this ->set_title( _("GParted") );
+	this ->set_title( _("WParted") );
 	this ->set_default_size( 775, 500 );
 	
 	try
 	{
-		this ->set_default_icon_name( "gparted" ) ;
+		this ->set_default_icon_name( "wparted" ) ;
 	}
 	catch ( Glib::Exception & e )
 	{
@@ -194,7 +194,7 @@ void Win_WParted::init_menubar()
 	menu->append(*item);
 
 	item = Gtk::manage(new WParted::Menu_Helpers::MenuElem(
-		_("_GParted"), *menu));
+		_("_WParted"), *menu));
 	menubar_main.append(*item);
 
 	//edit
@@ -1201,7 +1201,7 @@ bool Win_WParted::Quit_Check_Operations()
 	if (m_operations.size())
 	{
 		Gtk::MessageDialog dialog( *this,
-					   _("Quit GParted?"),
+					   _("Quit WParted?"),
 					   false,
 					   Gtk::MESSAGE_QUESTION,
 					   Gtk::BUTTONS_NONE,
@@ -1753,7 +1753,7 @@ void Win_WParted::combo_devices_changed()
 		m_current_device = old_current_device;
 	if (m_current_device >= m_devices.size())
 		m_current_device = 0;
-	set_title(Glib::ustring::compose(_("%1 - GParted"), m_devices[m_current_device]->get_path()));
+	set_title(Glib::ustring::compose(_("%1 - WParted"), m_devices[m_current_device]->get_path()));
 
 	// Switch the menus and column header between disk device and Volume Group variants.
 	set_device_type_ui();
@@ -1838,7 +1838,7 @@ void Win_WParted::menu_gparted_refresh_devices()
 	//if no devices were detected we disable some stuff and show a message in the statusbar
 	if (m_devices.empty())
 	{
-		this ->set_title( _("GParted") );
+		this ->set_title( _("WParted") );
 		combo_devices .hide() ;
 		
 		mainmenu_items[MENU_DEVICES]->set_sensitive(false);

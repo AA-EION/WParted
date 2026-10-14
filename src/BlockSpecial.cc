@@ -22,7 +22,19 @@ Copyright (C) 2016 Mike Fleetwood
 #include <glibmm/ustring.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#if !defined(_WIN32)
 #include <sys/sysmacros.h>
+#else
+#ifndef major
+#define major(dev) 0
+#endif
+#ifndef minor
+#define minor(dev) 0
+#endif
+#ifndef S_ISBLK
+#define S_ISBLK(m) 0
+#endif
+#endif
 #include <unistd.h>
 #include <map>
 

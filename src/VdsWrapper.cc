@@ -12,7 +12,11 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <objbase.h>
 #include <winioctl.h>
+#ifndef __vdslun_h__
+#define __vdslun_h__
+#endif
 #include <vds.h>
 #endif
 
@@ -113,7 +117,7 @@ VolumeResizeCapabilities VdsWrapper::QueryResizeCapabilities(const std::wstring&
         }
 
         // Query shrink capabilities using FSCTL_SHRINK_VOLUME with ShrinkPrepare
-        SHRINK_VOLUME_INFORMATION shrinkInfo = { 0 };
+        SHRINK_VOLUME_INFORMATION shrinkInfo = {};
         shrinkInfo.ShrinkRequestType = ShrinkPrepare;
         shrinkInfo.NewNumberOfSectors = 0;
 
@@ -176,7 +180,7 @@ bool VdsWrapper::ShrinkVolumeOnline(const std::wstring& volumePath, uint64_t byt
     uint64_t targetSectors = targetBytes / sectorSize;
 
     // Issue FSCTL_SHRINK_VOLUME with ShrinkCommit
-    SHRINK_VOLUME_INFORMATION shrinkInfo = { 0 };
+    SHRINK_VOLUME_INFORMATION shrinkInfo = {};
     shrinkInfo.ShrinkRequestType = ShrinkCommit;
     shrinkInfo.NewNumberOfSectors = targetSectors;
 

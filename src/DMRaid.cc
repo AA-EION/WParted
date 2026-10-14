@@ -25,6 +25,7 @@ Copyright (C) 2009, 2010, 2011 Curtis Gedak
 
 #include <limits.h>
 #include <stdlib.h>		//atoi function
+#include <unistd.h>
 #include <glibmm/miscutils.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/shell.h>

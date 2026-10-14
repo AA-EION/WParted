@@ -112,6 +112,22 @@ endif()
 set(WPARTED_RC "${CMAKE_CURRENT_SOURCE_DIR}/resources/wparted.rc")
 
 # Check for GTKmm
+if(WIN32 AND NOT PKG_CONFIG_EXECUTABLE)
+    find_program(PKG_CONFIG_EXECUTABLE
+        NAMES pkgconf pkg-config
+        HINTS
+            "C:/msys64/ucrt64/bin"
+            "C:/msys64/mingw64/bin"
+            "C:/msys64/clang64/bin"
+    )
+    if(PKG_CONFIG_EXECUTABLE)
+        get_filename_component(_PKG_BIN_DIR "${PKG_CONFIG_EXECUTABLE}" DIRECTORY)
+        if(NOT DEFINED ENV{PKG_CONFIG_PATH} AND EXISTS "${_PKG_BIN_DIR}/../lib/pkgconfig")
+            set(ENV{PKG_CONFIG_PATH} "${_PKG_BIN_DIR}/../lib/pkgconfig;${_PKG_BIN_DIR}/../share/pkgconfig")
+        endif()
+    endif()
+endif()
+
 find_package(PkgConfig QUIET)
 set(GTKMM_FOUND FALSE)
 if(PKG_CONFIG_FOUND)
@@ -174,6 +190,7 @@ if(ENABLE_GUI)
             src/BlockSpecial.cc
             src/Utils.cc
             src/FS_Info.cc
+            src/Proc_Partitions_Info.cc
             src/Mount_Info.cc
             src/LUKS_Info.cc
             src/LVM2_Info.cc

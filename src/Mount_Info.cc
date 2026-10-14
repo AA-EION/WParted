@@ -28,7 +28,11 @@ Copyright (C) 2016 Mike Fleetwood
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
+#if defined(_WIN32)
+#include "Win32StorageEngine.h"
+#else
 #include <mntent.h>
+#endif
 #include <string>
 #include <fstream>
 #include <vector>
@@ -60,6 +64,25 @@ void Mount_Info::load_cache()
 	mount_info.clear();
 	fstab_info.clear();
 
+#if defined(_WIN32)
+	auto drives = Win32StorageEngine::Instance().EnumerateDisks();
+	for (const auto& d : drives) {
+		for (const auto& p : d.partitions) {
+			if (!p.driveLetter.empty()) {
+				std::string mnt;
+				for (wchar_t wc : p.driveLetter) {
+					if (wc >= 32 && wc <= 126) mnt += static_cast<char>(wc);
+				}
+				if (!mnt.empty()) {
+					MountEntry entry;
+					entry.readonly = false;
+					entry.mountpoints.push_back(mnt);
+					mount_info[BlockSpecial(p.linuxDevPath)] = entry;
+				}
+			}
+		}
+	}
+#else
 	read_mountpoints_from_file( "/proc/mounts", mount_info );
 	read_mountpoints_from_file_swaps( "/proc/swaps", mount_info );
 
@@ -77,6 +100,7 @@ void Mount_Info::load_cache()
 		read_mountpoints_from_mount_command( mount_info );
 
 	read_mountpoints_from_file( "/etc/fstab", fstab_info );
+#endif
 
 	// Sort the mount points and remove duplicates ... (no need to do this for fstab_info)
 	MountMapping::iterator iter_mp;
@@ -156,6 +180,7 @@ bool Mount_Info::is_dev_mounted_at(const Glib::ustring& path, const Glib::ustrin
 
 void Mount_Info::read_mountpoints_from_file( const Glib::ustring & filename, MountMapping & map )
 {
+#ifndef _WIN32
 	FILE* fp = setmntent( filename .c_str(), "r" );
 	if (fp == nullptr)
 		return;
@@ -171,6 +196,10 @@ void Mount_Info::read_mountpoints_from_file( const Glib::ustring & filename, Mou
 	}
 
 	endmntent( fp );
+#else
+	(void)filename;
+	(void)map;
+#endif
 }
 
 

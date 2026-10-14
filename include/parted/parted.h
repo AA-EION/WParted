@@ -38,6 +38,12 @@ typedef enum _PedDeviceType {
     PED_DEVICE_PMEM
 } PedDeviceType;
 
+typedef struct _PedCHSGeometry {
+    int cylinders;
+    int heads;
+    int sectors;
+} PedCHSGeometry;
+
 typedef struct _PedDevice {
     struct _PedDevice* next;
     char* model;
@@ -51,6 +57,8 @@ typedef struct _PedDevice {
     PedDeviceType type;
     long long sector_size;
     long long phys_sector_size;
+    PedCHSGeometry bios_geom;
+    PedCHSGeometry hw_geom;
 } PedDevice;
 
 typedef struct _PedGeometry {
@@ -137,8 +145,8 @@ typedef struct _PedDisk {
 typedef struct _PedConstraint {
     PedGeometry* start_align;
     PedGeometry* end_align;
-    PedGeometry* min_size;
-    PedGeometry* max_size;
+    PedSector min_size;
+    PedSector max_size;
 } PedConstraint;
 
 typedef enum _PedExceptionType {
@@ -201,7 +209,7 @@ int ped_disk_set_partition_geom(PedDisk* disk, PedPartition* part, const PedCons
 
 PedPartition* ped_partition_new(const PedDisk* disk, PedPartitionType type, const PedFileSystemType* fs_type, PedSector start, PedSector end);
 void ped_partition_destroy(PedPartition* part);
-const char* ped_partition_get_path(const PedPartition* part);
+char* ped_partition_get_path(const PedPartition* part);
 const char* ped_partition_get_name(const PedPartition* part);
 int ped_partition_set_name(PedPartition* part, const char* name);
 int ped_partition_get_flag(const PedPartition* part, PedPartitionFlag flag);
@@ -221,7 +229,7 @@ PedConstraint* ped_constraint_any(const PedDevice* dev);
 PedConstraint* ped_constraint_exact(const PedGeometry* geom);
 void ped_constraint_destroy(PedConstraint* constraint);
 
-const PedFileSystemType* ped_file_system_type_get(const char* name);
+PedFileSystemType* ped_file_system_type_get(const char* name);
 PedFileSystem* ped_file_system_open(PedGeometry* geom);
 void ped_file_system_close(PedFileSystem* fs);
 int ped_file_system_resize(PedFileSystem* fs, PedGeometry* geom, PedConstraint* timer);

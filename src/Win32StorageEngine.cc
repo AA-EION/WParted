@@ -457,7 +457,7 @@ bool Win32StorageEngine::InitializeDisk(int diskIndex, bool asGpt)
         return false;
     }
 
-    CREATE_DISK createDisk = { 0 };
+    CREATE_DISK createDisk = {};
     createDisk.PartitionStyle = asGpt ? PARTITION_STYLE_GPT : PARTITION_STYLE_MBR;
     if (asGpt) {
         CoCreateGuid(&createDisk.Gpt.DiskId);

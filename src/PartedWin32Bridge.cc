@@ -82,6 +82,10 @@ static PedDevice* CreatePedDeviceFromDrive(const Win32DiskDrive& drive)
     dev->phys_sector_size = drive.physicalSectorSize ? drive.physicalSectorSize : 512;
     dev->length = drive.sectorCount;
     dev->type = PED_DEVICE_SCSI;
+    dev->bios_geom.heads = 255;
+    dev->bios_geom.sectors = 63;
+    dev->bios_geom.cylinders = static_cast<int>(drive.sectorCount / (255 * 63));
+    dev->hw_geom = dev->bios_geom;
     return dev;
 }
 
@@ -210,7 +214,7 @@ int ped_disk_type_check_feature(const PedDiskType* disk_type, PedDiskTypeFeature
     return (disk_type->features & feature) ? 1 : 0;
 }
 
-static const PedFileSystemType* FindFsType(const std::string& name)
+static PedFileSystemType* FindFsType(const std::string& name)
 {
     for (size_t i = 0; g_fsTypes[i].name != nullptr; ++i) {
         if (name == g_fsTypes[i].name) return &g_fsTypes[i];
@@ -418,12 +422,12 @@ void ped_partition_destroy(PedPartition* part)
     if (part) std::free(part);
 }
 
-const char* ped_partition_get_path(const PedPartition* part)
+char* ped_partition_get_path(const PedPartition* part)
 {
-    if (!part || !part->disk || !part->disk->dev) return "";
-    static char buf[64];
+    if (!part || !part->disk || !part->disk->dev) return _strdup("");
+    char buf[64];
     std::snprintf(buf, sizeof(buf), "%s%d", part->disk->dev->path, part->num);
-    return buf;
+    return _strdup(buf);
 }
 
 const char* ped_partition_get_name(const PedPartition* part)
@@ -544,7 +548,7 @@ void ped_constraint_destroy(PedConstraint* constraint)
     if (constraint) std::free(constraint);
 }
 
-const PedFileSystemType* ped_file_system_type_get(const char* name)
+PedFileSystemType* ped_file_system_type_get(const char* name)
 {
     return FindFsType(name ? name : "ntfs");
 }

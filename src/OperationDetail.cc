@@ -72,7 +72,9 @@ static struct CommandStatus
 
 static void setup_child_process()
 {
+#ifndef _WIN32
 	setpgrp();
+#endif
 }
 
 
@@ -104,7 +106,13 @@ static void update_command_output(OperationDetail* operationdetail, Glib::ustrin
 static void cancel_command(bool force, Glib::Pid pid, bool cancel_safe)
 {
 	if (force || cancel_safe)
+	{
+#ifndef _WIN32
 		kill(-pid, SIGINT);
+#else
+		TerminateProcess(pid, 1);
+#endif
+	}
 }
 
 
@@ -460,8 +468,10 @@ int OperationDetail::execute_command_internal(const Glib::ustring& command, cons
 		cmd_operationdetail.add_child(OperationDetail( e.what(), STATUS_ERROR, FONT_ITALIC));
 		return Utils::get_failure_status(e);
 	}
+#ifndef _WIN32
 	fcntl(out, F_SETFL, O_NONBLOCK);
 	fcntl(err, F_SETFL, O_NONBLOCK);
+#endif
 	Glib::signal_child_watch().connect(sigc::ptr_fun(store_exit_status), pid);
 	PipeCapture outputcapture(out, cmd_status.output);
 	PipeCapture errorcapture(err, cmd_status.error);
