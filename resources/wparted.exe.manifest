@@ -2,17 +2,17 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity
     version="1.0.0.0"
-    processorArchitecture="*"
+    processorArchitecture="amd64"
     name="WParted.WindowsPartitionEditor.App"
     type="win32"
   />
   <description>WParted — Native Windows Partition Editor (Forked from GParted)</description>
   
-  <!-- Mandatory UAC Administrator Elevation -->
+  <!-- UAC Execution Level (asInvoker with dynamic self-elevation) -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

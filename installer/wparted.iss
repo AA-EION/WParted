@@ -29,8 +29,8 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-PrivilegesRequired=admin
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline dialog
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
