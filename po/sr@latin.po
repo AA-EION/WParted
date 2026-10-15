@@ -52,7 +52,7 @@ msgstr ""
 #: ../gparted.desktop.in.in.h:1 ../src/Dialog_Progress.cc:371
 #: ../src/Win_GParted.cc:81 ../src/Win_GParted.cc:1480
 #: ../src/Win_GParted.cc:1675
-msgid "GParted"
+msgid "WParted"
 msgstr "Gparted"
 
 #: ../gparted.desktop.in.in.h:2
@@ -539,7 +539,7 @@ msgid "Save Details"
 msgstr "Sačuvaj detalje"
 
 #: ../src/Dialog_Progress.cc:368
-msgid "GParted Details"
+msgid "WParted Details"
 msgstr "Detalji Gparteda"
 
 #: ../src/Dialog_Progress.cc:379
@@ -845,7 +845,7 @@ msgstr "Uklonio sam direktorijum %1"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: ../src/GParted_Core.cc:75 ../src/OperationDetail.cc:146
-msgid "GParted Bug"
+msgid "WParted Bug"
 msgstr "Greška Gparteda"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
@@ -894,7 +894,7 @@ msgid "The file system is damaged"
 msgstr "Sistem datoteka je oštećen"
 
 #: ../src/GParted_Core.cc:1487
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "Sistem datoteka nije poznat Gpartedu"
 
 #: ../src/GParted_Core.cc:1489
@@ -1776,7 +1776,7 @@ msgid "_Devices"
 msgstr "U_ređaji"
 
 #: ../src/Win_GParted.cc:169
-msgid "_GParted"
+msgid "_WParted"
 msgstr "_Gparted"
 
 #: ../src/Win_GParted.cc:189
@@ -1947,7 +1947,7 @@ msgstr[2] "%1 zakazanih operacija"
 msgstr[3] "Jedna zakazana operacija"
 
 #: ../src/Win_GParted.cc:1029
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "Da zatvorim Gparted?"
 
 #: ../src/Win_GParted.cc:1035
@@ -1959,7 +1959,7 @@ msgstr[2] "%1 operacija je trenutno zakazano."
 msgstr[3] "Jedna operacija je trenutno zakazana."
 
 #: ../src/Win_GParted.cc:1406
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr "%1 — Gparted"
 
 #: ../src/Win_GParted.cc:1456

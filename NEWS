@@ -1,4 +1,41 @@
 ============================
+WParted 0.1.0   (2026-10-15)
+============================
+
+Release Notes
+-------------
+  First pre-release of WParted, the Windows port of GParted 1.8.1.
+
+### Key changes include:
+
+  * Windows partition table back end for the libparted interface used by
+    GParted, built on IOCTL_DISK_GET/SET_DRIVE_LAYOUT_EX, with raw MBR,
+    EBR and GPT cross-checks, disk identity checks, verification after
+    every write and restore of the previous table on mismatch
+  * Read-only handling of dynamic disks, Storage Spaces, hybrid MBRs,
+    offline or write-protected disks and inconsistent partition tables
+  * NTFS, FAT16, FAT32 and exFAT create, label and check, plus NTFS grow
+    and shrink, through the Windows Storage Management API and chkdsk
+  * Drive letter assignment and removal in place of mount and unmount
+  * Native file system signature detection compatible with blkid
+  * No external commands are run on Windows other than chkdsk.exe
+  * CMake build with MSYS2 UCRT64, portable bundle and Inno Setup
+    installer, unit and virtual disk integration tests on Windows CI
+  * Removed the non-functional WSL bridge, APFS mounter, boot time
+    helper and their installer tasks from the 1.0.0-preview code base
+
+Code Credits
+------------
+  Windows port by Juan E. Gallego T. (Issen Software Group), based on
+  GParted by Bart Hakvoort, Curtis Gedak, Mike Fleetwood and contributors.
+
+Dependencies (new/updated)
+--------------------------
+  * Windows 10 or later, 64 bit
+  * Built with MSYS2 UCRT64: gtkmm 3, GTK 3, MinGW-w64 GCC, CMake 3.20+
+
+
+============================
 GParted 1.8.1   (2026-03-17)
 ============================
 

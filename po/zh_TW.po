@@ -60,8 +60,8 @@ msgstr "GParted 專案"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:3 src/Win_GParted.cc:89 src/Win_GParted.cc:1654
 #: src/Win_GParted.cc:1883
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:4
 msgid "Partition Editor"
@@ -555,8 +555,8 @@ msgid "Save Details"
 msgstr "儲存詳細資料"
 
 #: src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "GParted 詳細資料"
+msgid "WParted Details"
+msgstr "WParted 詳細資料"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:427
@@ -808,8 +808,8 @@ msgstr "已移除目錄 %1"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: src/GParted_Core.cc:68 src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "GParted 臭蟲"
+msgid "WParted Bug"
+msgstr "WParted 臭蟲"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:180 src/GParted_Core.cc:189
@@ -867,8 +867,8 @@ msgid "The file system is damaged"
 msgstr "檔案系統已受損"
 
 #: src/GParted_Core.cc:1363
-msgid "The file system is unknown to GParted"
-msgstr "GParted 不知道此檔案系統的類型"
+msgid "The file system is unknown to WParted"
+msgstr "WParted 不知道此檔案系統的類型"
 
 #: src/GParted_Core.cc:1365
 msgid "There is no file system available (unformatted)"
@@ -1724,8 +1724,8 @@ msgid "_Devices"
 msgstr "裝置(_D)"
 
 #: src/Win_GParted.cc:190
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:219
 msgid "_Edit"
@@ -1853,8 +1853,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "%1 個動作等待中"
 
 #: src/Win_GParted.cc:1162
-msgid "Quit GParted?"
-msgstr "離開 GParted？"
+msgid "Quit WParted?"
+msgstr "離開 WParted？"
 
 #: src/Win_GParted.cc:1168
 msgid "%1 operation is currently pending."
@@ -1862,8 +1862,8 @@ msgid_plural "%1 operations are currently pending."
 msgstr[0] "目前有 %1 個動作在等待。"
 
 #: src/Win_GParted.cc:1579
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1630
 msgid "Scanning all devices..."

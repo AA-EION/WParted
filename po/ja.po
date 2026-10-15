@@ -69,8 +69,8 @@ msgstr "GPartedプロジェクト"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:3 src/Win_GParted.cc:89 src/Win_GParted.cc:1652
 #: src/Win_GParted.cc:1881
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:4
 msgid "Partition Editor"
@@ -565,8 +565,8 @@ msgid "Save Details"
 msgstr "詳細を保存する"
 
 #: src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "GParted の詳細"
+msgid "WParted Details"
+msgstr "WParted の詳細"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:427
@@ -818,8 +818,8 @@ msgstr "ディレクトリ %1 を削除しました"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: src/GParted_Core.cc:67 src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "GParted バグ"
+msgid "WParted Bug"
+msgstr "WParted バグ"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:174 src/GParted_Core.cc:183
@@ -879,7 +879,7 @@ msgid "The file system is damaged"
 msgstr "ファイルシステムが損傷しています"
 
 #: src/GParted_Core.cc:1330
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "Gparted が判別できないファイルシステムです"
 
 #: src/GParted_Core.cc:1332
@@ -1771,8 +1771,8 @@ msgid "_Devices"
 msgstr "デバイス(_D)"
 
 #: src/Win_GParted.cc:190
-msgid "_GParted"
-msgstr "GParted(_G)"
+msgid "_WParted"
+msgstr "WParted(_G)"
 
 #: src/Win_GParted.cc:219
 msgid "_Edit"
@@ -1900,8 +1900,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "%1 件の操作を保留中"
 
 #: src/Win_GParted.cc:1162
-msgid "Quit GParted?"
-msgstr "GParted を終了しますか？"
+msgid "Quit WParted?"
+msgstr "WParted を終了しますか？"
 
 #: src/Win_GParted.cc:1168
 msgid "%1 operation is currently pending."
@@ -1909,8 +1909,8 @@ msgid_plural "%1 operations are currently pending."
 msgstr[0] "%1 件の操作を現在保留中"
 
 #: src/Win_GParted.cc:1577
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1628
 msgid "Scanning all devices..."

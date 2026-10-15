@@ -60,8 +60,8 @@ msgstr ""
 #: ../gparted.desktop.in.in.h:1 ../src/Dialog_Progress.cc:376
 #: ../src/Win_GParted.cc:87 ../src/Win_GParted.cc:1514
 #: ../src/Win_GParted.cc:1732
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -555,8 +555,8 @@ msgid "Save Details"
 msgstr "Konservi detalojn"
 
 #: ../src/Dialog_Progress.cc:373
-msgid "GParted Details"
-msgstr "Detaloj pri GParted"
+msgid "WParted Details"
+msgstr "Detaloj pri WParted"
 
 #: ../src/Dialog_Progress.cc:384
 msgid "Libparted"
@@ -852,8 +852,8 @@ msgstr "Forigis dosierujon %1"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: ../src/GParted_Core.cc:77 ../src/OperationDetail.cc:146
-msgid "GParted Bug"
-msgstr "GParted cimo"
+msgid "WParted Bug"
+msgstr "WParted cimo"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: ../src/GParted_Core.cc:196 ../src/GParted_Core.cc:205
@@ -901,8 +901,8 @@ msgid "The file system is damaged"
 msgstr "La dosiersistemo estas difektita"
 
 #: ../src/GParted_Core.cc:1515
-msgid "The file system is unknown to GParted"
-msgstr "La dosiersistemon ne konas GParted"
+msgid "The file system is unknown to WParted"
+msgstr "La dosiersistemon ne konas WParted"
 
 #: ../src/GParted_Core.cc:1517
 msgid "There is no file system available (unformatted)"
@@ -1756,8 +1756,8 @@ msgid "_Devices"
 msgstr "_Aparatoj"
 
 #: ../src/Win_GParted.cc:171
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:191
 msgid "_Edit"
@@ -1925,8 +1925,8 @@ msgstr[0] "%1 operacio endas"
 msgstr[1] "%1 operacioj endas"
 
 #: ../src/Win_GParted.cc:1036
-msgid "Quit GParted?"
-msgstr "Ĉu ĉesigi GParted?"
+msgid "Quit WParted?"
+msgstr "Ĉu ĉesigi WParted?"
 
 #: ../src/Win_GParted.cc:1042
 msgid "%1 operation is currently pending."
@@ -1935,8 +1935,8 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: ../src/Win_GParted.cc:1440
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1490
 msgid "Scanning all devices..."

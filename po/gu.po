@@ -887,8 +887,8 @@ msgstr ""
 #. ==== GUI =========================
 #: ../src/Win_GParted.cc:69 ../src/Win_GParted.cc:1038
 #: ../src/Win_GParted.cc:1193
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../src/Win_GParted.cc:136
 msgid "_Refresh Devices"
@@ -903,8 +903,8 @@ msgid "_Show Features"
 msgstr "લક્ષણો બતાવો (_S)"
 
 #: ../src/Win_GParted.cc:150
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:169
 msgid "_Edit"
@@ -1044,8 +1044,8 @@ msgstr[0] "%1 પ્રક્રિયાઓ બાકી"
 msgstr[1] "%1 પ્રક્રિયાઓ બાકી"
 
 #: ../src/Win_GParted.cc:728
-msgid "Quit GParted?"
-msgstr "શું GParted બંધ કરવું છે?"
+msgid "Quit WParted?"
+msgstr "શું WParted બંધ કરવું છે?"
 
 #: ../src/Win_GParted.cc:734
 #, fuzzy
@@ -1067,8 +1067,8 @@ msgid "_Swapon"
 msgstr "_Swapon"
 
 #: ../src/Win_GParted.cc:948
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:994
 msgid "Scanning all devices..."

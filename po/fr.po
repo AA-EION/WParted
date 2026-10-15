@@ -76,8 +76,8 @@ msgstr ""
 #. ==== GUI =========================
 #: ../gparted.desktop.in.in.h:1 ../src/Win_GParted.cc:90
 #: ../src/Win_GParted.cc:1659 ../src/Win_GParted.cc:1888
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -581,8 +581,8 @@ msgid "Save Details"
 msgstr "Enregistrer les détails"
 
 #: ../src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "Détails de GParted"
+msgid "WParted Details"
+msgstr "Détails de WParted"
 
 #. Device overview information
 #: ../src/Dialog_Progress.cc:427
@@ -956,8 +956,8 @@ msgstr "Répertoire %1 supprimé"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: ../src/GParted_Core.cc:66 ../src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "Bogue GParted"
+msgid "WParted Bug"
+msgstr "Bogue WParted"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: ../src/GParted_Core.cc:178 ../src/GParted_Core.cc:187
@@ -1020,8 +1020,8 @@ msgid "The file system is damaged"
 msgstr "Le système de fichiers est endommagé"
 
 #: ../src/GParted_Core.cc:1369
-msgid "The file system is unknown to GParted"
-msgstr "Le système de fichiers est inconnu de GParted"
+msgid "The file system is unknown to WParted"
+msgstr "Le système de fichiers est inconnu de WParted"
 
 #: ../src/GParted_Core.cc:1371
 msgid "There is no file system available (unformatted)"
@@ -1934,8 +1934,8 @@ msgid "_Devices"
 msgstr "_Périphériques"
 
 #: ../src/Win_GParted.cc:191
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:220
 msgid "_Edit"
@@ -2068,8 +2068,8 @@ msgstr[0] "%1 opération en attente"
 msgstr[1] "%1 opérations en attente"
 
 #: ../src/Win_GParted.cc:1167
-msgid "Quit GParted?"
-msgstr "Quitter GParted ?"
+msgid "Quit WParted?"
+msgstr "Quitter WParted ?"
 
 #: ../src/Win_GParted.cc:1173
 msgid "%1 operation is currently pending."
@@ -2078,8 +2078,8 @@ msgstr[0] "%1 opération est en attente."
 msgstr[1] "%1 opérations sont en attente."
 
 #: ../src/Win_GParted.cc:1584
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1635
 msgid "Scanning all devices..."

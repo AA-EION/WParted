@@ -27,8 +27,8 @@ msgstr "Create, reorganise, and delete partitions"
 #: ../gparted.desktop.in.in.h:2 ../src/Dialog_Progress.cc:361
 #: ../src/Win_GParted.cc:72 ../src/Win_GParted.cc:1115
 #: ../src/Win_GParted.cc:1306
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:3
 msgid "GParted Partition Editor"
@@ -352,8 +352,8 @@ msgid "Save Details"
 msgstr "Save Details"
 
 #: ../src/Dialog_Progress.cc:358
-msgid "GParted Details"
-msgstr "GParted Details"
+msgid "WParted Details"
+msgstr "WParted Details"
 
 #: ../src/Dialog_Progress.cc:366
 msgid "Libparted"
@@ -684,8 +684,8 @@ msgid "The file system is damaged"
 msgstr "The file system is damaged"
 
 #: ../src/GParted_Core.cc:1204
-msgid "The file system is unknown to GParted"
-msgstr "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
+msgstr "The file system is unknown to WParted"
 
 #: ../src/GParted_Core.cc:1206
 msgid "There is no file system available (unformatted)"
@@ -1269,8 +1269,8 @@ msgid "_Devices"
 msgstr "_Devices"
 
 #: ../src/Win_GParted.cc:150
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:169
 msgid "_Edit"
@@ -1427,8 +1427,8 @@ msgstr[0] "%1 operation pending"
 msgstr[1] "%1 operations pending"
 
 #: ../src/Win_GParted.cc:790
-msgid "Quit GParted?"
-msgstr "Quit GParted?"
+msgid "Quit WParted?"
+msgstr "Quit WParted?"
 
 #: ../src/Win_GParted.cc:796 ../src/Win_GParted.cc:2050
 msgid "%1 operation is currently pending."
@@ -1449,8 +1449,8 @@ msgid "_Swapon"
 msgstr "_Swapon"
 
 #: ../src/Win_GParted.cc:1047
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1093
 msgid "Scanning all devices..."

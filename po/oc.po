@@ -55,8 +55,8 @@ msgstr ""
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:96 src/Win_GParted.cc:1666
 #: src/Win_GParted.cc:1895
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -562,8 +562,8 @@ msgid "Save Details"
 msgstr "Enregistrar los detalhs"
 
 #: src/Dialog_Progress.cc:407
-msgid "GParted Details"
-msgstr "Detalhs de GParted"
+msgid "WParted Details"
+msgstr "Detalhs de WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:448
@@ -817,8 +817,8 @@ msgstr ""
 #: src/GParted_Core.cc:74 src/OperationDetail.cc:227
 #, fuzzy
 #| msgid "GParted"
-msgid "GParted Bug"
-msgstr "GParted"
+msgid "WParted Bug"
+msgstr "WParted"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:184 src/GParted_Core.cc:193
@@ -883,8 +883,8 @@ msgid "The file system is damaged"
 msgstr "Lo sistèma de fichièrs es damatjat"
 
 #: src/GParted_Core.cc:1319
-msgid "The file system is unknown to GParted"
-msgstr "Lo sistèma de fichièrs es desconegut de GParted"
+msgid "The file system is unknown to WParted"
+msgstr "Lo sistèma de fichièrs es desconegut de WParted"
 
 #: src/GParted_Core.cc:1321
 msgid "There is no file system available (unformatted)"
@@ -1788,8 +1788,8 @@ msgid "_Devices"
 msgstr "_Periferics"
 
 #: src/Win_GParted.cc:197
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:226
 msgid "_Edit"
@@ -1918,8 +1918,8 @@ msgstr[0] "%1 operacion en espèra"
 msgstr[1] "%1 operacions en espèra"
 
 #: src/Win_GParted.cc:1168
-msgid "Quit GParted?"
-msgstr "Quitar GParted ?"
+msgid "Quit WParted?"
+msgstr "Quitar WParted ?"
 
 #: src/Win_GParted.cc:1174
 msgid "%1 operation is currently pending."
@@ -1928,8 +1928,8 @@ msgstr[0] "%1 operacion es en espèra."
 msgstr[1] "%1 operacions son en espèra."
 
 #: src/Win_GParted.cc:1588
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1641
 msgid "Scanning all devices..."

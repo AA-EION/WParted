@@ -22,7 +22,7 @@ msgstr ""
 #: ../gparted.desktop.in.in.h:1 ../src/Dialog_Progress.cc:362
 #: ../src/Win_GParted.cc:74 ../src/Win_GParted.cc:1215
 #: ../src/Win_GParted.cc:1406
-msgid "GParted"
+msgid "WParted"
 msgstr "జిపార్టెడ్"
 
 #: ../gparted.desktop.in.in.h:2
@@ -398,7 +398,7 @@ msgid "Save Details"
 msgstr "వివరాలను భద్రపరుచు"
 
 #: ../src/Dialog_Progress.cc:359
-msgid "GParted Details"
+msgid "WParted Details"
 msgstr "జిపార్టెడ్ వివరాలు"
 
 #: ../src/Dialog_Progress.cc:367
@@ -749,7 +749,7 @@ msgid "The file system is damaged"
 msgstr "ఫైల్ వ్యవస్థ పాడైనది"
 
 #: ../src/GParted_Core.cc:1263
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "ఈ ఫైల్ వ్యవస్థ జిపార్టెడ్‌కు తెలియదు"
 
 #: ../src/GParted_Core.cc:1265
@@ -1410,7 +1410,7 @@ msgid "_Devices"
 msgstr "పరికరాలు (_D)"
 
 #: ../src/Win_GParted.cc:152
-msgid "_GParted"
+msgid "_WParted"
 msgstr "జిపార్టెడ్ (_G)"
 
 #: ../src/Win_GParted.cc:171
@@ -1568,7 +1568,7 @@ msgstr[0] "%1 కార్యము పెండింగులో ఉన్న�
 msgstr[1] "%1 కార్యములు పెండింగులో ఉన్నాయి"
 
 #: ../src/Win_GParted.cc:880
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "జిపార్టెడ్ నిష్క్రమించాలా?"
 
 #: ../src/Win_GParted.cc:886 ../src/Win_GParted.cc:2173
@@ -1578,7 +1578,7 @@ msgstr[0] "ప్రస్తుతం %1 కార్యము పెండి�
 msgstr[1] "ప్రస్తుతం %1 కార్యములు పెండింగులో ఉన్నాయి."
 
 #: ../src/Win_GParted.cc:1147
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr "%1 - జిపార్టెడ్"
 
 #: ../src/Win_GParted.cc:1193

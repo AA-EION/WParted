@@ -30,7 +30,7 @@ msgstr "ཇི་ནོམ་བར་བཅད་ཞུན་དགཔ།"
 #: ../src/Win_GParted.cc:66
 #: ../src/Win_GParted.cc:1011
 #: ../src/Win_GParted.cc:1132
-msgid "GParted"
+msgid "WParted"
 msgstr "ཇི་པར་ཊེཊི།"
 
 #: ../src/Dialog_Base_Partition.cc:56
@@ -868,7 +868,7 @@ msgid "_Show Features"
 msgstr "_ཁྱད་རྣམ་ཚུ་སྟོན།"
 
 #: ../src/Win_GParted.cc:147
-msgid "_GParted"
+msgid "_WParted"
 msgstr "ཇི་པར་ཊེཊི།(_G)"
 
 #: ../src/Win_GParted.cc:166
@@ -997,7 +997,7 @@ msgid "1 operation pending"
 msgstr "༡ བཀོལ་སྤྱོད་བསྣར་བའི་བསྒང་།"
 
 #: ../src/Win_GParted.cc:713
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "ཇི་པར་ཊེཊི་ སྤང་ག?"
 
 #: ../src/Win_GParted.cc:720
@@ -1021,7 +1021,7 @@ msgid "_Swapon"
 msgstr "_ བརྗེ་སོར་ཨཱོན།"
 
 #: ../src/Win_GParted.cc:921
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr "%1 -ཇི་པར་ཊེཊི།"
 
 #: ../src/Win_GParted.cc:967

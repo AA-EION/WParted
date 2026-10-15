@@ -326,16 +326,16 @@ msgid "Save Details"
 msgstr ""
 
 #: ../src/Dialog_Progress.cc:353
-msgid "GParted Details"
-msgstr "Munudoù GParted"
+msgid "WParted Details"
+msgstr "Munudoù WParted"
 
 #. ==== GUI =========================
 #: ../src/Dialog_Progress.cc:356
 #: ../src/Win_GParted.cc:69
 #: ../src/Win_GParted.cc:1105
 #: ../src/Win_GParted.cc:1260
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../src/Dialog_Progress.cc:357
 msgid "Libparted"
@@ -474,7 +474,7 @@ msgid "The file system is damaged"
 msgstr ""
 
 #: ../src/GParted_Core.cc:868
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr ""
 
 #: ../src/GParted_Core.cc:870
@@ -969,8 +969,8 @@ msgid "_Devices"
 msgstr "_Trobarzhelloù"
 
 #: ../src/Win_GParted.cc:147
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:166
 msgid "_Edit"
@@ -1108,8 +1108,8 @@ msgstr[0] "%1 gwezhiadur ehanet"
 msgstr[1] "%1 a gwezhiadurioù ehanet"
 
 #: ../src/Win_GParted.cc:753
-msgid "Quit GParted?"
-msgstr "Kuitaat GParted ?"
+msgid "Quit WParted?"
+msgstr "Kuitaat WParted ?"
 
 #: ../src/Win_GParted.cc:759
 msgid "%1 operation is currently pending."
@@ -1130,8 +1130,8 @@ msgid "_Swapon"
 msgstr ""
 
 #: ../src/Win_GParted.cc:1015
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1061
 msgid "Scanning all devices..."

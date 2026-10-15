@@ -43,8 +43,8 @@ msgstr "GParted 可用於許多檔案系統，包含：btrfs、ext2、ext3、ext
 #: ../gparted.desktop.in.in.h:1 ../src/Dialog_Progress.cc:360
 #: ../src/Win_GParted.cc:75 ../src/Win_GParted.cc:1282
 #: ../src/Win_GParted.cc:1473
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -465,8 +465,8 @@ msgid "Save Details"
 msgstr "儲存詳細資料"
 
 #: ../src/Dialog_Progress.cc:357
-msgid "GParted Details"
-msgstr "GParted 詳細資料"
+msgid "WParted Details"
+msgstr "WParted 詳細資料"
 
 #: ../src/Dialog_Progress.cc:368
 msgid "Libparted"
@@ -811,8 +811,8 @@ msgid "The file system is damaged"
 msgstr "檔案系統已受損"
 
 #: ../src/GParted_Core.cc:1356
-msgid "The file system is unknown to GParted"
-msgstr "GParted 不知道此檔案系統的類型"
+msgid "The file system is unknown to WParted"
+msgstr "WParted 不知道此檔案系統的類型"
 
 #: ../src/GParted_Core.cc:1358
 msgid "There is no file system available (unformatted)"
@@ -1429,8 +1429,8 @@ msgid "_Devices"
 msgstr "裝置(_D)"
 
 #: ../src/Win_GParted.cc:157
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:177
 msgid "_Edit"
@@ -1586,8 +1586,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "等待中的 %1 個動作"
 
 #: ../src/Win_GParted.cc:906
-msgid "Quit GParted?"
-msgstr "離開 GParted?"
+msgid "Quit WParted?"
+msgstr "離開 WParted?"
 
 #: ../src/Win_GParted.cc:912
 msgid "%1 operation is currently pending."
@@ -1595,8 +1595,8 @@ msgid_plural "%1 operations are currently pending."
 msgstr[0] "目前有 %1 個動作在等待。"
 
 #: ../src/Win_GParted.cc:1221
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1258
 msgid "Scanning all devices..."

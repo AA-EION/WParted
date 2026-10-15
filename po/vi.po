@@ -58,8 +58,8 @@ msgstr ""
 #. ==== GUI =========================
 #: ../gparted.desktop.in.in.h:1 ../src/Win_GParted.cc:88
 #: ../src/Win_GParted.cc:1635 ../src/Win_GParted.cc:1863
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -563,8 +563,8 @@ msgid "Save Details"
 msgstr "Lưu chi tiết"
 
 #: ../src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "Chi tiết GParted"
+msgid "WParted Details"
+msgstr "Chi tiết WParted"
 
 #. Device overview information
 #: ../src/Dialog_Progress.cc:427
@@ -929,8 +929,8 @@ msgstr "Đã xóa bỏ thư mục %1"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: ../src/GParted_Core.cc:64 ../src/OperationDetail.cc:146
-msgid "GParted Bug"
-msgstr "Lỗi GParted"
+msgid "WParted Bug"
+msgstr "Lỗi WParted"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: ../src/GParted_Core.cc:176 ../src/GParted_Core.cc:185
@@ -989,8 +989,8 @@ msgid "The file system is damaged"
 msgstr "Hệ thống tập tin bị hỏng"
 
 #: ../src/GParted_Core.cc:1363
-msgid "The file system is unknown to GParted"
-msgstr "GParted không biết hệ thống tập tin"
+msgid "The file system is unknown to WParted"
+msgstr "WParted không biết hệ thống tập tin"
 
 #: ../src/GParted_Core.cc:1365
 msgid "There is no file system available (unformatted)"
@@ -1872,8 +1872,8 @@ msgid "_Devices"
 msgstr "Thiết _bị"
 
 #: ../src/Win_GParted.cc:189
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:218
 msgid "_Edit"
@@ -2007,8 +2007,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "%1 thao tác còn chưa giải quyết"
 
 #: ../src/Win_GParted.cc:1148
-msgid "Quit GParted?"
-msgstr "Thoát GParted không?"
+msgid "Quit WParted?"
+msgstr "Thoát WParted không?"
 
 #: ../src/Win_GParted.cc:1154
 msgid "%1 operation is currently pending."
@@ -2018,8 +2018,8 @@ msgstr[0] "%1 thao tác hiện tại còn chưa giải quyết."
 # Name: don't translate / Tên: đừng dịch
 # Variable: don't translate / Biến: đừng dịch
 #: ../src/Win_GParted.cc:1560
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1611
 msgid "Scanning all devices..."

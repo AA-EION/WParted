@@ -71,8 +71,8 @@ msgstr "Проектът GParted"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1728
 #: src/Win_GParted.cc:1960
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -600,7 +600,7 @@ msgid "Save Details"
 msgstr "Запазване на доклад"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
+msgid "WParted Details"
 msgstr "Доклад от редактора на дялове"
 
 #. Device overview information
@@ -843,8 +843,8 @@ msgid "Removed directory %1"
 msgstr "Изтрита е папка %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "Грешка в GParted"
+msgid "WParted Bug"
+msgstr "Грешка в WParted"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -912,7 +912,7 @@ msgid "The file system is damaged"
 msgstr "Файловата система е повредена"
 
 #: src/GParted_Core.cc:1517
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "Файловата система е непозната на Редактора на дялове"
 
 #: src/GParted_Core.cc:1519
@@ -1811,7 +1811,7 @@ msgid "_Devices"
 msgstr "_Устройства"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
+msgid "_WParted"
 msgstr "_Основни"
 
 #: src/Win_GParted.cc:223
@@ -1977,7 +1977,7 @@ msgstr[0] "%1 предстоящо действие"
 msgstr[1] "%1 предстоящи действия"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "Затваряне на Редактора на дялове?"
 
 #: src/Win_GParted.cc:1207
@@ -1987,7 +1987,7 @@ msgstr[0] "Предстои %1 действие."
 msgstr[1] "Предстоят %1 действия."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr "%1 — Редактор на дялове"
 
 #: src/Win_GParted.cc:1703

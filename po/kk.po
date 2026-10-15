@@ -63,8 +63,8 @@ msgstr "GParted жобасы"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1838
 #: src/Win_GParted.cc:2070
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -594,8 +594,8 @@ msgid "Save Details"
 msgstr "Ақпаратты сақтау"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "GParted ақпараты"
+msgid "WParted Details"
+msgstr "WParted ақпараты"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -837,8 +837,8 @@ msgid "Removed directory %1"
 msgstr "Бума өшірілді: %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "GParted ақаулығы"
+msgid "WParted Bug"
+msgstr "WParted ақаулығы"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -908,8 +908,8 @@ msgid "The file system is damaged"
 msgstr "Файлдық жүйе зақымдалған"
 
 #: src/GParted_Core.cc:1520
-msgid "The file system is unknown to GParted"
-msgstr "GParted үшін файлдық жүйе белгісіз"
+msgid "The file system is unknown to WParted"
+msgstr "WParted үшін файлдық жүйе белгісіз"
 
 #: src/GParted_Core.cc:1522
 msgid "There is no file system available (unformatted)"
@@ -1817,8 +1817,8 @@ msgid "_Devices"
 msgstr "Құр_ылғылар"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:223
 msgid "_Edit"
@@ -1982,8 +1982,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "%1 әрекет кезекте"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "GParted жабу керек пе?"
+msgid "Quit WParted?"
+msgstr "WParted жабу керек пе?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -1991,8 +1991,8 @@ msgid_plural "%1 operations are currently pending."
 msgstr[0] "%1 әрекет қазір кезекте."
 
 #: src/Win_GParted.cc:1753
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1813
 msgid "Scanning all devices..."
