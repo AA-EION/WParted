@@ -1,0 +1,11 @@
+--- a/lib/support/sort_r.h	2026-10-15 22:59:52.338177903 +0000
++++ b/lib/support/sort_r.h	2026-10-15 23:27:57.241883871 +0000
+@@ -29,7 +29,7 @@
+ #elif (defined HAVE_BSD_QSORT_R)
+ #  define _SORT_R_BSD
+ #elif (defined __gnu_hurd__ || defined __GNU__ || \
+-       defined __MINGW32__ || defined __GLIBC__)
++       defined __GLIBC__)
+ #  define _SORT_R_GNU
+ #elif (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || \
+      defined __FreeBSD__ || defined __DragonFly__)

@@ -47,9 +47,12 @@ esac
 
 CPPFLAGS="-DWPARTED_BROKER_IO -include $HERE/wparted_e2fs.h -I$ROOT/helpers/broker"
 LDFLAGS=""
+MAKE_VARS=()
 if [[ $windows == yes ]]; then
 	CPPFLAGS="$CPPFLAGS -I$HERE/compat"
 	LDFLAGS="-static"
+	# -rdynamic only serves backtraces on ELF systems.
+	MAKE_VARS=(RDYNAMIC=)
 fi
 
 CC_TOOL=${CC:-cc}
@@ -58,13 +61,15 @@ for a in "$@"; do
 done
 "$CC_TOOL" -O2 -Wall -c "$ROOT/helpers/broker/wpbroker.c" -I"$ROOT/helpers/broker" -o "$BUILD/wpbroker.o"
 
+# configure sees the real environment; the broker header and the Windows
+# compatibility headers are only added when compiling (make CPPFLAGS=...).
 echo "==> Configuring"
 (cd "$BUILD" && "$SRC/configure" "$@" \
 	--disable-nls --disable-fuse2fs --disable-defrag --disable-uuidd --disable-debugfs \
 	--disable-imager --disable-e2initrd-helper --disable-tls --disable-fsck \
 	--disable-elf-shlibs --disable-bsd-shlibs --enable-libblkid --enable-libuuid \
 	--without-libarchive --without-pthread \
-	CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" LIBS="$BUILD/wpbroker.o" > configure.log 2>&1) || {
+	LDFLAGS="$LDFLAGS" LIBS="$BUILD/wpbroker.o" > configure.log 2>&1) || {
 	tail -30 "$BUILD/configure.log" >&2; exit 1; }
 
 # Build the broker I/O manager in place of unix_io / windows_io.
@@ -72,7 +77,7 @@ sed -i -E 's/\b(unix_io|windows_io)\.(o|c)\b/wparted_io.\2/g' "$BUILD/lib/ext2fs
 
 echo "==> Building libraries"
 for d in lib/et lib/uuid lib/blkid lib/ext2fs lib/e2p lib/support; do
-	make -C "$BUILD/$d" -j"$(nproc)" > "$BUILD/make-$(basename "$d").log" 2>&1 || {
+	make -C "$BUILD/$d" -j"$(nproc)" CFLAGS="-g -O2 $CPPFLAGS" CFLAGS_STLIB="-g -O2 $CPPFLAGS" > "$BUILD/make-$(basename "$d").log" 2>&1 || {
 		tail -30 "$BUILD/make-$(basename "$d").log" >&2; exit 1; }
 done
 
@@ -80,7 +85,7 @@ echo "==> Building tools"
 build_tool()
 {
 	local dir=$1 target=$2
-	make -C "$BUILD/$dir" -j"$(nproc)" "$target" > "$BUILD/make-$target.log" 2>&1 || {
+	make -C "$BUILD/$dir" -j"$(nproc)" CFLAGS="-g -O2 $CPPFLAGS" CFLAGS_STLIB="-g -O2 $CPPFLAGS" "${MAKE_VARS[@]}" "$target" > "$BUILD/make-$target.log" 2>&1 || {
 		grep -E "error|undefined reference" "$BUILD/make-$target.log" | head -40 >&2
 		tail -15 "$BUILD/make-$target.log" >&2; exit 1; }
 }
