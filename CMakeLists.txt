@@ -56,6 +56,8 @@ add_library(wparted_disk STATIC
 	src/WinDevNames.cc
 	src/WinBroker.cc
 	src/WinSandbox.cc
+	src/WinCapabilities.cc
+	src/WinFsUsage.cc
 	src/WinFsProbe.cc
 	src/WinScan.cc
 	src/PartedWin32Bridge.cc
@@ -238,6 +240,8 @@ if(WPARTED_BUILD_TESTS)
 		tests/test_PartedBridge.cc
 		tests/test_WinFsProbe.cc
 		tests/test_WinBroker.cc
+		tests/test_WinCapabilities.cc
+		tests/test_WinFsUsage.cc
 	)
 	target_include_directories(wparted_unit_tests PRIVATE tests)
 	target_link_libraries(wparted_unit_tests PRIVATE wparted_disk wparted_broker_client GTest::gtest_main)

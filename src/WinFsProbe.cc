@@ -452,6 +452,129 @@ bool probe_reiserfs(Bytes& b, Result& r)
 }
 
 
+// Compact MD5 (RFC 1321), only used to derive HFS+ UUIDs like blkid.
+void md5(const uint8_t* data, size_t len, uint8_t out[16])
+{
+	static const uint32_t K[64] = {
+		0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+		0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+		0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+		0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+		0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+		0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+		0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+		0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391 };
+	static const uint8_t S[64] = {
+		7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+		5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20,
+		4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+		6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21 };
+	uint32_t h[4] = { 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476 };
+	std::vector<uint8_t> msg(data, data + len);
+	msg.push_back(0x80);
+	while (msg.size() % 64 != 56)
+		msg.push_back(0);
+	uint64_t bits = uint64_t(len) * 8;
+	for (int i = 0; i < 8; i++)
+		msg.push_back(static_cast<uint8_t>(bits >> (8 * i)));
+	for (size_t off = 0; off < msg.size(); off += 64)
+	{
+		uint32_t m[16];
+		for (int i = 0; i < 16; i++)
+			m[i] = le32(&msg[off + 4 * i]);
+		uint32_t a = h[0], bb = h[1], c = h[2], d = h[3];
+		for (int i = 0; i < 64; i++)
+		{
+			uint32_t f;
+			int g;
+			if (i < 16)      { f = (bb & c) | (~bb & d);  g = i; }
+			else if (i < 32) { f = (d & bb) | (~d & c);   g = (5 * i + 1) % 16; }
+			else if (i < 48) { f = bb ^ c ^ d;            g = (3 * i + 5) % 16; }
+			else             { f = c ^ (bb | ~d);         g = (7 * i) % 16; }
+			uint32_t tmp = d;
+			d = c;
+			c = bb;
+			uint32_t x = a + f + K[i] + m[g];
+			bb = bb + ((x << S[i]) | (x >> (32 - S[i])));
+			a = tmp;
+		}
+		h[0] += a; h[1] += bb; h[2] += c; h[3] += d;
+	}
+	for (int i = 0; i < 4; i++)
+		for (int k = 0; k < 4; k++)
+			out[4 * i + k] = static_cast<uint8_t>(h[i] >> (8 * k));
+}
+
+
+uint32_t be32(const uint8_t* p) { return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16) | (uint32_t(p[2]) << 8) | p[3]; }
+
+
+// HFS+ UUID and label exactly as blkid derives them: the UUID is an MD5 based
+// version 3 UUID of the Finder information volume id, the label is the name
+// in the catalog key of the first leaf record (the root folder thread).
+void hfsplus_uuid_label(Bytes& b, const std::vector<uint8_t>& vh, Result& r)
+{
+	static const uint8_t hash_init[16] = {
+		0xb3, 0xe2, 0x0f, 0x39, 0xf2, 0x92, 0x11, 0xd6,
+		0x97, 0xa4, 0x00, 0x30, 0x65, 0x43, 0xec, 0xac };
+	const uint8_t* id = &vh[104];   // finderInfo[6..7]
+	if (! all_zero(id, 8))
+	{
+		uint8_t in[24];
+		std::memcpy(in, hash_init, 16);
+		std::memcpy(in + 16, id, 8);
+		uint8_t u[16];
+		md5(in, sizeof(in), u);
+		u[6] = 0x30 | (u[6] & 0x0f);
+		u[8] = 0x80 | (u[8] & 0x3f);
+		r.uuid = uuid_lower(u);
+	}
+
+	uint32_t blocksize = be32(&vh[40]);
+	if (blocksize < 512 || (blocksize & (blocksize - 1)) || blocksize > 1024 * 1024)
+		return;
+	const uint8_t* extents = &vh[0x110 + 16];   // catalogFile.extents
+	uint32_t cat_block = be32(extents);
+	std::vector<uint8_t> head;
+	if (! b.get(uint64_t(cat_block) * blocksize, 512, head))
+		return;
+	uint32_t leaf_head  = be32(&head[14 + 10]);
+	uint16_t node_size  = be16(&head[14 + 18]);
+	uint32_t leaf_count = be32(&head[14 + 6]);
+	if (leaf_count == 0 || node_size < 512 || node_size > 32768)
+		return;
+	uint64_t leaf_block = uint64_t(leaf_head) * node_size / blocksize;
+	uint32_t ext_start = 0;
+	int ext;
+	for (ext = 0; ext < 8; ext++)
+	{
+		ext_start = be32(&extents[8 * ext]);
+		uint32_t ext_count = be32(&extents[8 * ext + 4]);
+		if (ext_count == 0)
+			return;
+		if (leaf_block < ext_count)
+			break;
+		leaf_block -= ext_count;
+	}
+	if (ext == 8)
+		return;
+	std::vector<uint8_t> node;
+	if (! b.get((uint64_t(ext_start) + leaf_block) * blocksize, node_size, node))
+		return;
+	uint16_t records = be16(&node[10]);
+	if (records == 0 || node[8] != 0xFF)   // kHFSLeafNode (-1)
+		return;
+	uint32_t parent = be32(&node[16]);
+	uint16_t chars = be16(&node[20]);
+	if (parent != 1 || chars > 255 || 22u + 2u * chars > node.size())
+		return;
+	std::u16string u;
+	for (uint16_t i = 0; i < chars; i++)
+		u.push_back(static_cast<char16_t>(be16(&node[22 + 2 * i])));
+	set_label(r, WinDisk::utf16_to_utf8(u));
+}
+
+
 bool probe_hfs(Bytes& b, Result& r)
 {
 	std::vector<uint8_t> sb;
@@ -460,6 +583,7 @@ bool probe_hfs(Bytes& b, Result& r)
 	if (sb[0] == 'H' && (sb[1] == '+' || sb[1] == 'X'))
 	{
 		r.type = "hfsplus";  // HFS+ and HFSX
+		hfsplus_uuid_label(b, sb, r);
 		return true;
 	}
 	if (sb[0] == 'B' && sb[1] == 'D')

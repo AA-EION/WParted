@@ -56,6 +56,18 @@ struct Options
 	std::function<void(const std::string& chunk, bool is_stderr)> on_output;
 	// Polled about ten times a second; returning true terminates the helper.
 	std::function<bool()> cancelled;
+	// Hardening measures, all on by default.  Only the integration tests switch
+	// single measures off, to report which one a failing helper trips over.
+	unsigned hardening = HARDEN_ALL;
+
+	enum : unsigned
+	{
+		HARDEN_LOW_INTEGRITY = 1,
+		HARDEN_DENY_ADMINS   = 2,
+		HARDEN_JOB_UI_LIMITS = 4,
+		HARDEN_MITIGATIONS   = 8,
+		HARDEN_ALL           = 15,
+	};
 };
 
 

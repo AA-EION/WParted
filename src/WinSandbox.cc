@@ -154,7 +154,7 @@ std::wstring executable_dir()
 
 
 // Restricted, low integrity copy of our own (elevated) token.
-bool make_token(Handle& token, std::string& error)
+bool make_token(Handle& token, unsigned hardening, std::string& error)
 {
 	Handle self;
 	if (! OpenProcessToken(GetCurrentProcess(),
@@ -186,12 +186,16 @@ bool make_token(Handle& token, std::string& error)
 		disable_count++;
 	}
 
+	if (! (hardening & Options::HARDEN_DENY_ADMINS))
+		disable_count = 0;
 	if (! CreateRestrictedToken(self.get(), DISABLE_MAX_PRIVILEGE, disable_count, disable, 0, nullptr,
 	                            0, nullptr, token.out()))
 	{
 		error = "CreateRestrictedToken: " + win_error(GetLastError());
 		return false;
 	}
+	if (! (hardening & Options::HARDEN_LOW_INTEGRITY))
+		return true;
 
 	PSID low = nullptr;
 	if (! ConvertStringSidToSidW(L"S-1-16-4096", &low))
@@ -215,9 +219,8 @@ bool make_token(Handle& token, std::string& error)
 }
 
 
-bool make_job(Handle& job, uint64_t memory_limit, std::string& error)
+bool make_job(Handle& job, uint64_t memory_limit, unsigned hardening, std::string& error)
 {
-	job.out();
 	*job.out() = CreateJobObjectW(nullptr, nullptr);
 	if (! job.valid())
 	{
@@ -236,6 +239,8 @@ bool make_job(Handle& job, uint64_t memory_limit, std::string& error)
 		error = "SetInformationJobObject(limits): " + win_error(GetLastError());
 		return false;
 	}
+	if (! (hardening & Options::HARDEN_JOB_UI_LIMITS))
+		return true;
 	JOBOBJECT_BASIC_UI_RESTRICTIONS ui = {};
 	ui.UIRestrictionsClass = JOB_OBJECT_UILIMIT_DESKTOP | JOB_OBJECT_UILIMIT_DISPLAYSETTINGS |
 	                         JOB_OBJECT_UILIMIT_EXITWINDOWS | JOB_OBJECT_UILIMIT_GLOBALATOMS |
@@ -364,7 +369,8 @@ Result run(const Options& options)
 
 	Handle token;
 	Handle job;
-	if (! make_token(token, result.failure) || ! make_job(job, options.memory_limit, result.failure))
+	if (! make_token(token, options.hardening, result.failure) ||
+	    ! make_job(job, options.memory_limit, options.hardening, result.failure))
 		return result;
 
 	Handle out_parent, out_child, err_parent, err_child, in_parent, in_child;
@@ -428,8 +434,9 @@ Result run(const Options& options)
 	                      PROCESS_CREATION_MITIGATION_POLICY_IMAGE_LOAD_PREFER_SYSTEM32_ALWAYS_ON;
 	bool attrs_ok = UpdateProcThreadAttribute(attrs, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, inherit.data(),
 	                                          inherit.size() * sizeof(HANDLE), nullptr, nullptr) &&
-	                UpdateProcThreadAttribute(attrs, 0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &mitigations,
-	                                          sizeof(mitigations), nullptr, nullptr);
+	                (! (options.hardening & Options::HARDEN_MITIGATIONS) ||
+	                 UpdateProcThreadAttribute(attrs, 0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &mitigations,
+	                                           sizeof(mitigations), nullptr, nullptr));
 	if (! attrs_ok)
 	{
 		result.failure = "UpdateProcThreadAttribute: " + win_error(GetLastError());
@@ -450,7 +457,7 @@ Result run(const Options& options)
 	cmd.push_back(L'\0');
 	PROCESS_INFORMATION pi = {};
 	BOOL created = CreateProcessAsUserW(token.get(), wpath.c_str(), cmd.data(), nullptr, nullptr, TRUE,
-	                                    EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_NO_WINDOW |
+	                                    EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS |
 	                                    CREATE_UNICODE_ENVIRONMENT,
 	                                    &env[0], dir.c_str(), &si.StartupInfo, &pi);
 	DWORD create_error = GetLastError();

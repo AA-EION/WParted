@@ -452,6 +452,30 @@ TEST_F(WinIntegration, I_BackToGpt)
 }
 
 
+// When a sandboxed run fails, find out which hardening measure is to blame so
+// the CI log says what to fix.
+static void diagnose(WinSandbox::Options opt)
+{
+	struct { unsigned flag; const char* name; } measures[] = {
+		{ WinSandbox::Options::HARDEN_LOW_INTEGRITY, "low integrity" },
+		{ WinSandbox::Options::HARDEN_DENY_ADMINS,   "deny-only Administrators" },
+		{ WinSandbox::Options::HARDEN_JOB_UI_LIMITS, "job UI limits" },
+		{ WinSandbox::Options::HARDEN_MITIGATIONS,   "process mitigations" },
+	};
+	for (const auto& m : measures)
+	{
+		opt.hardening = WinSandbox::Options::HARDEN_ALL & ~m.flag;
+		WinSandbox::Result r = WinSandbox::run(opt);
+		std::fprintf(stderr, "diagnosis: without %s: started=%d exit=0x%08x failure=%s\n", m.name,
+		             r.started, static_cast<unsigned>(r.exit_code), r.failure.c_str());
+	}
+	opt.hardening = 0;
+	WinSandbox::Result r = WinSandbox::run(opt);
+	std::fprintf(stderr, "diagnosis: without any hardening: started=%d exit=0x%08x failure=%s\n",
+	             r.started, static_cast<unsigned>(r.exit_code), r.failure.c_str());
+}
+
+
 // Runs without a test disk: the sandbox must keep a helper away from disks and
 // volumes even though the test itself runs as administrator.
 TEST(WinSandboxConfinement, HelperCannotOpenDisksOrWriteFiles)
@@ -467,7 +491,9 @@ TEST(WinSandboxConfinement, HelperCannotOpenDisksOrWriteFiles)
 	opt.timeout_ms = 60000;
 	WinSandbox::Result r = WinSandbox::run(opt);
 	ASSERT_TRUE(r.started) << r.failure;
-	EXPECT_EQ(0, r.exit_code) << r.error;
+	if (r.exit_code != 0)
+		diagnose(opt);
+	ASSERT_EQ(0, r.exit_code) << r.error;
 	std::fprintf(stderr, "probe output:\n%s", r.output.c_str());
 	EXPECT_NE(std::string::npos, r.output.find("disk=denied")) << r.output;
 	EXPECT_NE(std::string::npos, r.output.find("volume=denied")) << r.output;

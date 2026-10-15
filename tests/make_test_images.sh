@@ -81,5 +81,31 @@ if command -v cryptsetup > /dev/null 2>&1; then
 		"${BLKID_LABEL:-}" >> expected.txt
 fi
 
+# --- File system usage as reported by the Linux tools --------------------
+
+: > usage.txt
+for img in ext2.img ext3.img ext4.img; do
+	fs=${img%.img}
+	bs=$(dumpe2fs -h "$img" 2>/dev/null | sed -n 's/^Block size: *//p')
+	blocks=$(dumpe2fs -h "$img" 2>/dev/null | sed -n 's/^Block count: *//p')
+	free=$(dumpe2fs -h "$img" 2>/dev/null | sed -n 's/^Free blocks: *//p')
+	echo "$img|$fs|$((blocks * bs))|$((free * bs))" >> usage.txt
+done
+if command -v btrfs > /dev/null 2>&1; then
+	total=$(btrfs inspect-internal dump-super btrfs.img | sed -n 's/^total_bytes[[:space:]]*//p')
+	used=$(btrfs inspect-internal dump-super btrfs.img | sed -n 's/^bytes_used[[:space:]]*//p')
+	echo "btrfs.img|btrfs|$total|$((total - used))" >> usage.txt
+fi
+if command -v xfs_db > /dev/null 2>&1; then
+	bs=$(xfs_db -r -c 'sb 0' -c 'print blocksize' xfs.img | sed -n 's/^blocksize = //p')
+	dblocks=$(xfs_db -r -c 'sb 0' -c 'print dblocks' xfs.img | sed -n 's/^dblocks = //p')
+	fdblocks=$(xfs_db -r -c 'sb 0' -c 'print fdblocks' xfs.img | sed -n 's/^fdblocks = //p')
+	echo "xfs.img|xfs|$((dblocks * bs))|$((fdblocks * bs))" >> usage.txt
+fi
+if command -v mkfs.hfsplus > /dev/null 2>&1; then
+	mk hfsplus.img 32M mkfs.hfsplus -v HFSLabel
+fi
+
 echo "Test images created in $OUT"
 cat expected.txt
+cat usage.txt
