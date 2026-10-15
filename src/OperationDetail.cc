@@ -22,6 +22,13 @@
 #include "ProgressBar.h"
 #include "Utils.h"
 
+#if defined(_WIN32)
+#include "WinHelpers.h"
+#include <atomic>
+#include <mutex>
+#include <thread>
+#endif
+
 #include <cerrno>
 #include <ctime>
 #include <fcntl.h>
@@ -542,6 +549,133 @@ int OperationDetail::execute_command_internal(const Glib::ustring& command, cons
 	cmd_operationdetail.stop_progressbar();
 	return cmd_status.exit_status;
 }
+
+
+#if defined(_WIN32)
+int OperationDetail::execute_helper(const WinHelpers::Command& command, const Glib::ustring& device_path,
+                                    ExecFlags flags, StreamSlot stream_progress_slot)
+{
+	add_child(OperationDetail(WinHelpers::display(command, device_path.raw()), STATUS_EXECUTE, FONT_BOLD_ITALIC));
+	OperationDetail& cmd_operationdetail = get_last_child();
+
+	cmd_status.exit_status = 255;
+	PipeCapture outputcapture(cmd_status.output);
+	PipeCapture errorcapture(cmd_status.error);
+	cmd_operationdetail.add_child(OperationDetail(cmd_status.output, STATUS_NONE, FONT_MONOSPACE));
+	cmd_operationdetail.add_child(OperationDetail(cmd_status.error, STATUS_NONE, FONT_MONOSPACE));
+	OperationDetailVector& children = cmd_operationdetail.get_children();
+	outputcapture.signal_update.connect(sigc::bind(sigc::ptr_fun(update_command_output),
+	                                               children[children.size() - 2].get(),
+	                                               &cmd_status.output));
+	errorcapture.signal_update.connect(sigc::bind(sigc::ptr_fun(update_command_output),
+	                                              children[children.size() - 1].get(),
+	                                              &cmd_status.error));
+	if (flags & EXEC_PROGRESS_STDOUT && ! stream_progress_slot.empty())
+		outputcapture.signal_update.connect(sigc::bind(stream_progress_slot, &cmd_operationdetail));
+	else if (flags & EXEC_PROGRESS_STDERR && ! stream_progress_slot.empty())
+		errorcapture.signal_update.connect(sigc::bind(stream_progress_slot, &cmd_operationdetail));
+
+	// The helper runs on a worker thread; its output is handed to the main loop,
+	// which keeps the progress dialog alive meanwhile.
+	struct Shared
+	{
+		std::mutex         mutex;
+		std::string        output;
+		std::string        error;
+		bool               done = false;
+		WinSandbox::Result result;
+		std::atomic<bool>  cancel{false};
+	};
+	std::shared_ptr<Shared> shared = std::make_shared<Shared>();
+	const bool cancel_safe = flags & EXEC_CANCEL_SAFE;
+	sigc::connection connection_cancel = cmd_operationdetail.signal_cancel.connect(
+	        sigc::slot<void, bool>([shared, cancel_safe](bool force)
+	{
+		// Cancelling ends the helper at once.  Unless forced, only for commands
+		// where that is harmless (creating a file system).
+		if (force || cancel_safe)
+			shared->cancel = true;
+	}));
+
+	std::thread worker([shared, command]()
+	{
+		WinSandbox::Result r = WinHelpers::run(command,
+		        [shared](const std::string& chunk, bool is_stderr)
+		        {
+		                std::lock_guard<std::mutex> lock(shared->mutex);
+		                (is_stderr ? shared->error : shared->output) += chunk;
+		        },
+		        [shared]() { return shared->cancel.load(); });
+		std::lock_guard<std::mutex> lock(shared->mutex);
+		shared->result = std::move(r);
+		shared->done = true;
+	});
+
+	auto drain = [&]() -> bool
+	{
+		std::string out, err;
+		bool done;
+		{
+			std::lock_guard<std::mutex> lock(shared->mutex);
+			out.swap(shared->output);
+			err.swap(shared->error);
+			done = shared->done;
+		}
+		if (! out.empty())
+			outputcapture.feed(out.data(), out.size());
+		if (! err.empty())
+			errorcapture.feed(err.data(), err.size());
+		return done;
+	};
+
+	if (g_main_context_is_owner(g_main_context_default()))
+	{
+		sigc::connection timer = Glib::signal_timeout().connect(sigc::slot<bool>([&]() -> bool
+		{
+			if (! drain())
+				return true;
+			Gtk::Main::quit();
+			return false;
+		}), 100);
+		Gtk::Main::run();
+		timer.disconnect();
+	}
+	worker.join();
+	drain();
+	outputcapture.finish();
+	errorcapture.finish();
+	connection_cancel.disconnect();
+	cmd_operationdetail.stop_progressbar();
+
+	const WinSandbox::Result& r = shared->result;
+	if (! r.started)
+	{
+		cmd_operationdetail.add_child(OperationDetail(r.failure, STATUS_ERROR, FONT_ITALIC));
+		cmd_status.exit_status = 127;
+	}
+	else
+	{
+		cmd_status.exit_status = r.exit_code;
+		if (r.timed_out)
+			cmd_operationdetail.add_child(OperationDetail(_("The program took too long and was stopped."),
+			                                              STATUS_NONE, FONT_ITALIC));
+		if (r.cancelled)
+			cmd_operationdetail.add_child(OperationDetail(_("Cancelled: the program was stopped."),
+			                                              STATUS_NONE, FONT_ITALIC));
+		if (r.timed_out || r.cancelled)
+			cmd_status.exit_status = 255;
+	}
+	if (r.broker.refused > 0 || ! r.broker_error.empty())
+		cmd_operationdetail.add_child(OperationDetail(
+		        Glib::ustring::compose(_("WParted refused %1 disk requests from the program: %2"),
+		                               Utils::num_to_str(r.broker.refused), r.broker_error),
+		        STATUS_NONE, FONT_ITALIC));
+
+	if (flags & EXEC_CHECK_STATUS)
+		cmd_operationdetail.set_success_and_capture_errors(cmd_status.exit_status == 0);
+	return cmd_status.exit_status;
+}
+#endif
 
 
 }  // namespace WParted

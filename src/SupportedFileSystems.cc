@@ -41,6 +41,7 @@
 
 #if defined(_WIN32)
 #include "WinNativeFS.h"
+#include "WinLinuxFS.h"
 #endif
 
 #include <memory>
@@ -105,20 +106,38 @@ SupportedFileSystems::SupportedFileSystems()
 	m_fs_objects[FS_FAT16] = std::make_unique<WinNativeFS>(FS_FAT16);
 	m_fs_objects[FS_FAT32] = std::make_unique<WinNativeFS>(FS_FAT32);
 	m_fs_objects[FS_EXFAT] = std::make_unique<WinNativeFS>(FS_EXFAT);
+	// Linux and macOS file systems WParted handles itself: ext2/3/4 with its
+	// sandboxed e2fsprogs tools, swap space directly, usage of the others.
+	m_fs_objects[FS_EXT2]       = std::make_unique<WinExtFS>(FS_EXT2);
+	m_fs_objects[FS_EXT3]       = std::make_unique<WinExtFS>(FS_EXT3);
+	m_fs_objects[FS_EXT4]       = std::make_unique<WinExtFS>(FS_EXT4);
+	m_fs_objects[FS_LINUX_SWAP] = std::make_unique<WinSwapFS>();
+	m_fs_objects[FS_BTRFS]      = std::make_unique<WinUsageFS>(FS_BTRFS);
+	m_fs_objects[FS_XFS]        = std::make_unique<WinUsageFS>(FS_XFS);
+	m_fs_objects[FS_HFSPLUS]    = std::make_unique<WinUsageFS>(FS_HFSPLUS);
+	m_fs_objects[FS_APFS]       = std::make_unique<WinUsageFS>(FS_APFS);
 #endif
 }
 
 
 #if defined(_WIN32)
-// On Windows only file systems Windows manages natively can be operated on.  All
-// others (ext2/3/4, btrfs, xfs, LUKS, LVM2 PV, linux-swap, ...) are detected and
-// displayed, with their partitions still deletable and their partition type and
-// flags changeable, but their contents can not be created, checked, resized or
-// labelled: that would need the Linux tools.  Never probe PATH for Linux tools
-// here; an MSYS2 or Cygwin build of e.g. mkfs.ext4 must not be used.
-static bool windows_native(FSType fstype)
+// On Windows only the file systems with a Windows implementation above can be
+// operated on, each as far as the capability resolver (WinCapabilities.h) says.
+// All others (f2fs, LUKS, LVM2 PV, ...) are detected and displayed, with their
+// partitions still deletable and their partition type and flags changeable.
+// Never probe PATH for Linux tools here; an MSYS2 or Cygwin build of e.g.
+// mkfs.ext4 must not be used.
+static bool windows_implemented(FSType fstype)
 {
-	return fstype == FS_NTFS || fstype == FS_FAT16 || fstype == FS_FAT32 || fstype == FS_EXFAT;
+	switch (fstype)
+	{
+		case FS_NTFS:  case FS_FAT16: case FS_FAT32: case FS_EXFAT:
+		case FS_EXT2:  case FS_EXT3:  case FS_EXT4:  case FS_LINUX_SWAP:
+		case FS_BTRFS: case FS_XFS:   case FS_HFSPLUS: case FS_APFS:
+			return true;
+		default:
+			return false;
+	}
 }
 #endif
 
@@ -136,7 +155,7 @@ void SupportedFileSystems::find_supported_filesystems()
 	for (iter = m_fs_objects.begin(); iter != m_fs_objects.end(); iter++)
 	{
 #if defined(_WIN32)
-		if (iter->second && windows_native(iter->first))
+		if (iter->second && windows_implemented(iter->first))
 		{
 			m_fs_support.push_back(iter->second->get_filesystem_support());
 		}

@@ -60,6 +60,20 @@ for a in "$@"; do
 	case "$a" in --host=*) CC_TOOL="${a#--host=}-gcc" ;; esac
 done
 "$CC_TOOL" -O2 -Wall -c "$ROOT/helpers/broker/wpbroker.c" -I"$ROOT/helpers/broker" -o "$BUILD/wpbroker.o"
+EXTRA_OBJS="$BUILD/wpbroker.o"
+
+if [[ $windows == yes ]]; then
+	# Manifest: UTF-8 as the process code page, so that arguments such as labels
+	# arrive in main() unchanged (Windows 10 1903 and later), and no elevation.
+	WINDRES_TOOL=windres
+	for a in "$@"; do
+		case "$a" in --host=*) WINDRES_TOOL="${a#--host=}-windres" ;; esac
+	done
+	cp "$HERE/helper.manifest" "$BUILD/helper.manifest"
+	printf '1 24 "helper.manifest"\n' > "$BUILD/helper.rc"
+	(cd "$BUILD" && "$WINDRES_TOOL" helper.rc -O coff -o helper-manifest.o)
+	EXTRA_OBJS="$EXTRA_OBJS $BUILD/helper-manifest.o"
+fi
 
 # configure sees the real environment; the broker header and the Windows
 # compatibility headers are only added when compiling (make CPPFLAGS=...).
@@ -69,7 +83,7 @@ echo "==> Configuring"
 	--disable-imager --disable-e2initrd-helper --disable-tls --disable-fsck \
 	--disable-elf-shlibs --disable-bsd-shlibs --enable-libblkid --enable-libuuid \
 	--without-libarchive --without-pthread \
-	LDFLAGS="$LDFLAGS" LIBS="$BUILD/wpbroker.o" > configure.log 2>&1) || {
+	LDFLAGS="$LDFLAGS" LIBS="$EXTRA_OBJS" > configure.log 2>&1) || {
 	tail -30 "$BUILD/configure.log" >&2; exit 1; }
 
 # Build the broker I/O manager in place of unix_io / windows_io.
@@ -100,4 +114,7 @@ ext=""
 for t in misc/mke2fs misc/tune2fs misc/dumpe2fs e2fsck/e2fsck resize/resize2fs; do
 	cp "$BUILD/$t$ext" "$OUT/"
 done
+# mke2fs's defaults, as upstream ships them (WParted points MKE2FS_CONFIG here).
+cp "$SRC/misc/mke2fs.conf.in" "$OUT/mke2fs.conf"
+cp "$SRC/NOTICE" "$OUT/e2fsprogs-NOTICE.txt"
 echo "==> e2fsprogs $version helpers in $OUT"

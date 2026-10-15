@@ -35,6 +35,7 @@ static Components everything()
 	c.wsl_usable = true;
 	c.wsl_distro_ready = true;
 	c.experimental = true;
+	c.block_copy = true;
 	return c;
 }
 
@@ -182,15 +183,15 @@ TEST(Capabilities, Matrix)
 		{ "linux-swap",    "nPnPPPPPPnn" },
 		{ "btrfs",         "PLLLLLLPPLL" },
 		{ "xfs",           "PLLLLL-PPLL" },
-		{ "f2fs",          "PLL--L-PPLL" },
-		{ "luks",          "P----------" },
-		{ "lvm2 pv",       "P----------" },
+		{ "f2fs",          "-LL--L-PPLL" },   // No usage reader for F2FS
+		{ "luks",          "-----------" },
+		{ "lvm2 pv",       "-----------" },
 		{ "jfs",           "-------PP--" },
 		{ "nilfs2",        "-------PP--" },
 		{ "jbd",           "-----------" },
 		{ "hfs+",          "PRRRRRRRRPR" },
 		{ "apfs",          "PRRRRRRRRPR" },
-		{ "hfs",           "PRRRRRRRR-R" },
+		{ "hfs",           "-RRRRRRRR-R" },   // No usage reader for classic HFS
 		{ "iso9660",       "-----------" },
 		{ "unknown",       "-----------" },
 		{ "",              "-----------" },
@@ -276,7 +277,12 @@ TEST(Capabilities, ReasonsForWparted)
 	EXPECT_EQ(State::NEEDS_COMPONENT, c.state);
 	// Usage, moving and copying need no helper program.
 	EXPECT_TRUE(resolve("ext4", Op::INFO, disk, comps).available());
+	EXPECT_EQ(State::UNSUPPORTED, resolve("ext4", Op::MOVE, disk, comps).state);   // Not in this WParted
+	EXPECT_EQ(State::UNSUPPORTED, resolve("ntfs", Op::COPY, disk, comps).state);
+	comps.block_copy = true;
 	EXPECT_TRUE(resolve("ext4", Op::MOVE, disk, comps).available());
+	EXPECT_TRUE(resolve("ntfs", Op::COPY, disk, comps).available());
+	comps.block_copy = false;
 	EXPECT_TRUE(resolve("linux-swap", Op::CREATE, disk, comps).available());
 	EXPECT_EQ(State::NEEDS_COMPONENT, resolve("apfs", Op::BROWSE, disk, comps).state);
 

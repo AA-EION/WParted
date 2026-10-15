@@ -346,6 +346,9 @@ enum class SessionRange
 	PARTITION_AND_FREE_SPACE,
 };
 
+// A partition with contents: not empty, not an MBR extended partition.
+bool holds_data(const DiskLayout& layout, const LayoutEntry& e);
+
 // Check a session range against the current layout.  'disk_size' in bytes.
 bool session_range_allowed(const DiskLayout& layout, uint32_t sector_size, uint64_t disk_size,
                            uint64_t offset, uint64_t length, SessionRange range,

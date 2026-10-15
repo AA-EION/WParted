@@ -15,6 +15,7 @@
  */
 
 #include "WinCapabilities.h"
+#include "WinFsUsage.h"
 
 #include <algorithm>
 
@@ -174,7 +175,11 @@ Capability policy(const std::string& fs, Op op)
 			}
 			if (one_of(fs, { "btrfs", "xfs", "f2fs" }))
 			{
-				if (op == Op::INFO || op == Op::MOVE || op == Op::COPY)
+				if (op == Op::INFO)
+					return WinFsUsage::supported(fs)
+					       ? available(Provider::WPARTED)
+					       : unsupported(N_("WParted recognises this file system but can't read its usage."));
+				if (op == Op::MOVE || op == Op::COPY)
 					return available(Provider::WPARTED);
 				if (op == Op::SHRINK && fs == "xfs")
 					return unsupported(N_("XFS file systems can't be shrunk."));
@@ -186,8 +191,6 @@ Capability policy(const std::string& fs, Op op)
 			}
 			if (one_of(fs, { "luks", "lvm2 pv", "linux-raid", "bcache", "thin-pool" }))
 			{
-				if (op == Op::INFO)
-					return available(Provider::WPARTED);
 				return unsupported(N_("Encrypted (LUKS) volumes, LVM and RAID members are shown for information only."));
 			}
 			if (op == Op::MOVE || op == Op::COPY)
@@ -204,7 +207,9 @@ Capability policy(const std::string& fs, Op op)
 		case Family::APPLE:
 		{
 			if (op == Op::INFO)
-				return available(Provider::WPARTED);
+				return WinFsUsage::supported(fs)
+				       ? available(Provider::WPARTED)
+				       : unsupported(N_("WParted recognises this file system but can't read its usage."));
 			if (op == Op::BROWSE)
 				return fs == "hfs" ? unsupported(N_("Classic Mac OS (HFS) volumes can't be opened."))
 				                   : available(Provider::WPARTED);
@@ -254,6 +259,8 @@ Capability resolve(const std::string& fs, Op op, const DiskContext& disk, const 
 				c.detail = disk.busy_reason;
 				return c;
 			}
+			if ((op == Op::MOVE || op == Op::COPY) && ! comps.block_copy)
+				return unsupported(N_("Moving and copying partitions isn't available in this version of WParted."));
 			bool helper = family_of(fs) == Family::LINUX && fs != "linux-swap" &&
 			              op != Op::INFO && op != Op::MOVE && op != Op::COPY && op != Op::BROWSE;
 			if (helper && ! comps.wparted_tools)

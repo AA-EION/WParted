@@ -53,13 +53,17 @@ public:
 	           Partition & partition_old,
 	           OperationDetail & operationdetail );
 
-private:
+protected:
+	// Also used by WinExtFS, which runs the same tools on Windows.
 	void resize_progress( OperationDetail *operationdetail );
 	void create_progress( OperationDetail *operationdetail );
 	void check_repair_progress( OperationDetail *operationdetail );
-	void copy_progress( OperationDetail *operationdetail );
 
 	const FSType  m_specific_fstype = FS_UNKNOWN;
+
+private:
+	void copy_progress( OperationDetail *operationdetail );
+
 	Glib::ustring m_mkfs_cmd;
 
 	Byte_Value m_fs_block_size = 0LL;  // Holds file system block size for the copy_progress() callback

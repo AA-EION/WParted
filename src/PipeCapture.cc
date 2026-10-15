@@ -16,6 +16,8 @@
  */
 
 #include "PipeCapture.h"
+
+#include <algorithm>
 #include "Utils.h"
 
 #include <iostream>
@@ -123,6 +125,34 @@ PipeCapture::PipeCapture(int fd, Glib::ustring& buffer)
 }
 
 
+PipeCapture::PipeCapture(Glib::ustring& buffer)
+ : m_readbuf(64*KIBIBYTE),
+   m_callerbuf(buffer)
+{
+	m_callerbuf.clear();
+	m_callerbuf_uptodate = true;
+}
+
+
+void PipeCapture::feed(const char* data, size_t length)
+{
+	while (length > 0)
+	{
+		size_t n = std::min(length, READBUF_SIZE - m_fill_offset);
+		memcpy(m_readbuf.data() + m_fill_offset, data, n);
+		process(n);
+		data += n;
+		length -= n;
+	}
+}
+
+
+void PipeCapture::finish()
+{
+	end_of_stream();
+}
+
+
 void PipeCapture::connect_signal()
 {
 	// connect handler to signal input/output
@@ -200,6 +230,24 @@ bool PipeCapture::OnReadable( Glib::IOCondition condition )
 	gsize bytes_read;
 	Glib::IOStatus status = m_channel->read(m_readbuf.data() + m_fill_offset, READBUF_SIZE - m_fill_offset, bytes_read);
 	if ( status == Glib::IO_STATUS_NORMAL )
+	{
+		process(bytes_read);
+		return true;
+	}
+
+	if ( status != Glib::IO_STATUS_EOF )
+	{
+		std::cerr << "Pipe IOChannel read failed" << std::endl;
+	}
+
+	end_of_stream();
+	return false;
+}
+
+
+// Process 'bytes_read' new bytes at m_readbuf[m_fill_offset].
+void PipeCapture::process(size_t bytes_read)
+{
 	{
 		const char* read_ptr = m_readbuf.data();
 		const char* end_ptr = m_readbuf.data() + m_fill_offset + bytes_read;
@@ -296,14 +344,12 @@ bool PipeCapture::OnReadable( Glib::IOCondition condition )
 			m_callerbuf_uptodate = true;
 			signal_update.emit();
 		}
-		return true;
 	}
+}
 
-	if ( status != Glib::IO_STATUS_EOF )
-	{
-		std::cerr << "Pipe IOChannel read failed" << std::endl;
-	}
 
+void PipeCapture::end_of_stream()
+{
 	if (! m_callerbuf_uptodate)
 	{
 		m_callerbuf = m_capturebuf;
@@ -311,7 +357,6 @@ bool PipeCapture::OnReadable( Glib::IOCondition condition )
 	}
 	// signal completion
 	signal_eof.emit();
-	return false;
 }
 
 

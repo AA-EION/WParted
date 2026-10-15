@@ -77,6 +77,9 @@ inline ExecFlags operator&(ExecFlags lhs, ExecFlags rhs)
 
 
 class OperationDetail;
+#if defined(_WIN32)
+namespace WinHelpers { struct Command; }
+#endif
 typedef sigc::slot<void, OperationDetail*>            StreamSlot;
 typedef sigc::slot<bool, OperationDetail*>            TimedSlot;
 typedef std::vector<std::unique_ptr<OperationDetail>> OperationDetailVector;
@@ -116,6 +119,13 @@ public:
 	int execute_command(const Glib::ustring& command, const char* input, ExecFlags flags = EXEC_NONE);
 	int execute_command(const Glib::ustring& command, ExecFlags flags, StreamSlot stream_progress_slot);
 	int execute_command(const Glib::ustring& command, ExecFlags flags, TimedSlot timed_progress_slot);
+#if defined(_WIN32)
+	// Run one of WParted's bundled helper programs in the sandbox, reaching only
+	// the partition the command names (WinHelpers.h).  Shown as if the command
+	// ran on 'device_path'.  Same flags and progress callbacks as above.
+	int execute_helper(const WinHelpers::Command& command, const Glib::ustring& device_path,
+	                   ExecFlags flags, StreamSlot stream_progress_slot = StreamSlot());
+#endif
 	static const Glib::ustring& get_command_output();
 	static const Glib::ustring& get_command_error();
 

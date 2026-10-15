@@ -37,13 +37,19 @@ class PipeCapture
 {
 public:
 	PipeCapture( int fd, Glib::ustring &buffer );
+	// Without a pipe: output arrives through feed() and ends with finish().
+	explicit PipeCapture(Glib::ustring& buffer);
 
 	void connect_signal();
+	void feed(const char* data, size_t length);
+	void finish();
 	sigc::signal<void> signal_eof;
 	sigc::signal<void> signal_update;
 
 private:
 	bool OnReadable( Glib::IOCondition condition );
+	void process(size_t bytes_read);
+	void end_of_stream();
 	static gboolean _OnReadable( GIOChannel *source,
 	                             GIOCondition condition,
 	                             gpointer data );

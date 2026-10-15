@@ -144,6 +144,33 @@ for lang_dir in "$DIST"/share/locale/*/; do
 done
 
 
+# --- Bundled helper programs ------------------------------------------------------
+# e2fsprogs tools built by helpers/e2fsprogs/build.sh, run by WParted in its
+# sandbox.  Static executables: refuse any that would load DLLs from elsewhere.
+
+HELPERS_DIR=${HELPERS_DIR:-}
+if [[ -n "$HELPERS_DIR" ]]; then
+	echo "==> Adding helper programs from $HELPERS_DIR"
+	mkdir -p "$DIST/lib/wparted"
+	for tool in mke2fs e2fsck tune2fs dumpe2fs resize2fs; do
+		exe="$HELPERS_DIR/$tool.exe"
+		[[ -f "$exe" ]] || { echo "error: $exe missing" >&2; exit 1; }
+		while read -r dll; do
+			case "${dll,,}" in
+				kernel32.dll|msvcrt.dll|ucrtbase.dll|api-ms-win-*|advapi32.dll|ws2_32.dll|user32.dll) ;;
+				*) echo "error: $tool.exe imports $dll" >&2; exit 1 ;;
+			esac
+		done < <(objdump -p "$exe" | sed -n 's/^[[:space:]]*DLL Name: //p' | tr -d '\r')
+		cp -f "$exe" "$DIST/lib/wparted/"
+	done
+	cp -f "$HELPERS_DIR/mke2fs.conf" "$DIST/lib/wparted/"
+	mkdir -p "$DIST/licenses/e2fsprogs"
+	cp -f "$HELPERS_DIR/e2fsprogs-NOTICE.txt" "$DIST/licenses/e2fsprogs/NOTICE.txt"
+else
+	echo "warning: HELPERS_DIR not set, ext2/3/4 support will be missing from the bundle" >&2
+fi
+
+
 # --- Licenses and documentation --------------------------------------------------
 
 echo "==> Adding licenses and documentation"
@@ -160,7 +187,14 @@ later, see LICENSE.txt.  Source code: https://github.com/AA-EION/WParted
 The bin, lib and share folders also contain libraries and data from the MSYS2
 project (GTK, GLib, gtkmm, cairo, pango, the Adwaita icon theme, ...), mostly
 under the LGPL.  Their source code is available from https://packages.msys2.org
-and https://github.com/msys2/MINGW-packages.  Bundled packages:
+and https://github.com/msys2/MINGW-packages.
+
+The lib/wparted folder contains mke2fs, e2fsck, tune2fs, dumpe2fs and
+resize2fs from e2fsprogs (GPL version 2, see licenses/e2fsprogs), built from
+the upstream release named in third_party/sources.lock of the WParted source
+code with the changes in helpers/e2fsprogs.
+
+Bundled packages:
 
 TEXT
 

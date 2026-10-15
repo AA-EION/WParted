@@ -31,6 +31,10 @@
 #include "WinVolumeOps.h"
 #include "Win32Volumes.h"
 #include "WinSandbox.h"
+#include "WinHelpers.h"
+#include "WinSwap.h"
+#include "WinFsProbe.h"
+#include "WinFsUsage.h"
 
 #include "gtest/gtest.h"
 
@@ -576,6 +580,143 @@ TEST_F(WinIntegration, J_SandboxedHelperOnlyReachesItsPartition)
 	// Sessions are refused across partition boundaries.
 	EXPECT_FALSE(backend->open_session(s_disk, 100 * 1024 * 1024, 2 * 1024 * 1024, true,
 	                                   WinDisk::SessionRange::INSIDE_PARTITION, error));
+}
+
+
+static WinDisk::SectorReader disk_reader(int disk, uint64_t offset, uint64_t length)
+{
+	return [=](uint64_t lba, uint32_t count, std::vector<uint8_t>& out) -> bool
+	{
+		if (lba * 512 > length || uint64_t(count) * 512 > length - lba * 512)
+			return false;
+		out.resize(size_t(count) * 512);
+		std::string error;
+		return WinDisk::get_backend()->read_sectors(disk, offset / 512 + lba, count, 512, out.data(), error);
+	};
+}
+
+
+static long long dumpe2fs_value(const std::string& output, const char* key)
+{
+	size_t p = output.find(std::string("\n") + key + ":");
+	if (p == std::string::npos)
+		return -1;
+	return std::atoll(output.c_str() + p + std::strlen(key) + 2);
+}
+
+
+// The bundled e2fsprogs tools and WParted's swap space writer on a real disk,
+// as WParted's ext2/3/4 and linux-swap support runs them.
+TEST_F(WinIntegration, K_Ext4AndSwapWithBundledTools)
+{
+	if (! WinHelpers::tools_installed())
+	{
+		if (std::getenv("WPARTED_REQUIRE_HELPERS"))
+			FAIL() << "the bundled e2fsprogs tools are missing";
+		GTEST_SKIP() << "the bundled e2fsprogs tools are not built";
+	}
+	new_table("gpt");
+	ASSERT_EQ(1, create(PED_PARTITION_NORMAL, 1 * MiB, 257 * MiB - 1, "ext4"));
+	ASSERT_EQ(2, create(PED_PARTITION_NORMAL, 257 * MiB, 321 * MiB - 1, "linux-swap"));
+	WinDisk::DiskBackend* backend = WinDisk::get_backend();
+	std::string error;
+
+	std::vector<uint8_t> mark(512, 0x5A);
+	ASSERT_TRUE(backend->write_sectors(s_disk, 257 * MiB, 1, 512, mark.data(), error)) << error;
+
+	WinHelpers::Target t;
+	ASSERT_TRUE(WinHelpers::locate(s_disk, 1 * MiB * 512, t, error)) << error;
+	ASSERT_EQ(256ULL * 1024 * 1024, t.length);
+
+	auto run = [&](const WinHelpers::Command& c) -> WinSandbox::Result
+	{
+		WinSandbox::Result r = WinHelpers::run(c);
+		std::fprintf(stderr, "$ %s\n%s%s(exit %d, broker read=%llu written=%llu refused=%llu %s)\n",
+		             WinHelpers::display(c, "/dev/test1").c_str(), r.output.c_str(), r.error.c_str(),
+		             r.exit_code, static_cast<unsigned long long>(r.broker.bytes_read),
+		             static_cast<unsigned long long>(r.broker.bytes_written),
+		             static_cast<unsigned long long>(r.broker.refused), r.failure.c_str());
+		return r;
+	};
+
+	WinSandbox::Result r = run(WinHelpers::Ext::create(t, "ext4", u8"wparted é"));
+	ASSERT_TRUE(r.started) << r.failure;
+	ASSERT_EQ(0, r.exit_code) << r.error;
+	EXPECT_NE(std::string::npos, r.output.find("Writing inode tables: done")) << r.output;
+
+	r = run(WinHelpers::Ext::check_read_only(t));
+	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
+	EXPECT_EQ(0u, r.broker.bytes_written);
+
+	r = run(WinHelpers::Ext::info(t));
+	ASSERT_EQ(0, r.exit_code) << r.error;
+	EXPECT_NE(std::string::npos, r.output.find(u8"Filesystem volume name:   wparted é")) << r.output;
+	long long block_size = dumpe2fs_value(r.output, "Block size");
+	ASSERT_GT(block_size, 0);
+	EXPECT_EQ(256LL * 1024 * 1024 / block_size, dumpe2fs_value(r.output, "Block count"));
+
+	WinFsProbe::Result probe;
+	ASSERT_TRUE(WinFsProbe::probe(disk_reader(s_disk, t.offset, t.length), 512, t.length / 512, probe));
+	EXPECT_EQ("ext4", probe.type);
+	EXPECT_EQ(u8"wparted é", probe.label);
+
+	r = run(WinHelpers::Ext::set_label(t, "renamed"));
+	EXPECT_EQ(0, r.exit_code) << r.error;
+	std::string old_uuid = probe.uuid;
+	r = run(WinHelpers::Ext::new_uuid(t));
+	EXPECT_EQ(0, r.exit_code) << r.error;
+	ASSERT_TRUE(WinFsProbe::probe(disk_reader(s_disk, t.offset, t.length), 512, t.length / 512, probe));
+	EXPECT_EQ("renamed", probe.label);
+	EXPECT_NE(old_uuid, probe.uuid);
+
+	r = run(WinHelpers::Ext::check_repair(t));
+	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
+
+	r = run(WinHelpers::Ext::min_size(t));
+	EXPECT_EQ(0, r.exit_code) << r.error;
+	EXPECT_NE(std::string::npos, r.output.find("Estimated minimum size of the filesystem:")) << r.output;
+
+	// Shrink to 128 MiB and grow back to the partition, as GParted does.
+	r = run(WinHelpers::Ext::resize(t, 131072, false));
+	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
+	r = run(WinHelpers::Ext::info(t));
+	EXPECT_EQ(128LL * 1024 * 1024 / block_size, dumpe2fs_value(r.output, "Block count"));
+	r = run(WinHelpers::Ext::resize(t, 0, false));
+	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
+	r = run(WinHelpers::Ext::info(t));
+	EXPECT_EQ(256LL * 1024 * 1024 / block_size, dumpe2fs_value(r.output, "Block count"));
+	r = run(WinHelpers::Ext::check_read_only(t));
+	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
+
+	WinFsUsage::Usage usage;
+	ASSERT_TRUE(WinFsUsage::read("ext4", disk_reader(s_disk, t.offset, t.length), 512, t.length, usage, error))
+	        << error;
+	EXPECT_EQ(t.length, usage.size);
+	EXPECT_GT(usage.free, usage.size / 2);
+
+	// Nothing outside the partition was written.
+	std::vector<uint8_t> sector(512);
+	ASSERT_TRUE(backend->read_sectors(s_disk, 257 * MiB, 1, 512, sector.data(), error)) << error;
+	EXPECT_EQ(mark, sector);
+
+	// Swap space, written by WParted itself.
+	WinHelpers::Target swap;
+	ASSERT_TRUE(WinHelpers::locate(s_disk, 257 * MiB * 512, swap, error)) << error;
+	{
+		auto session = backend->open_session(swap.disk, swap.offset, swap.length, true,
+		                                     WinDisk::SessionRange::INSIDE_PARTITION, error);
+		ASSERT_TRUE(session) << error;
+		ASSERT_TRUE(WinSwap::create(*session, "wpswap", "", error)) << error;
+		ASSERT_TRUE(WinSwap::set_label(*session, "renamed", error)) << error;
+	}
+	ASSERT_TRUE(WinFsProbe::probe(disk_reader(s_disk, swap.offset, swap.length), 512, swap.length / 512, probe));
+	EXPECT_EQ("swap", probe.type);
+	EXPECT_EQ("renamed", probe.label);
+	EXPECT_EQ(36u, probe.uuid.size());
+
+	// The ext4 file system is untouched by the swap space next to it.
+	r = run(WinHelpers::Ext::check_read_only(t));
+	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
 }
 
 

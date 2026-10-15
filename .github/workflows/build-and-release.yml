@@ -33,7 +33,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build g++ fdisk gdisk dosfstools e2fsprogs ntfs-3g \
-            exfatprogs btrfs-progs xfsprogs f2fs-tools cryptsetup-bin
+            exfatprogs btrfs-progs xfsprogs f2fs-tools cryptsetup-bin hfsprogs
 
       - name: Create reference images
         run: sh tests/make_test_images.sh "$RUNNER_TEMP/images"
@@ -48,6 +48,14 @@ jobs:
         env:
           WPARTED_TEST_IMAGES: ${{ runner.temp }}/images
         run: ./build/wparted_unit_tests
+
+      # The same e2fsprogs tools WParted bundles for Windows, built for Linux,
+      # run through the broker on an image and checked with the system's tools.
+      - name: Build the e2fsprogs helpers
+        run: helpers/e2fsprogs/build.sh "$RUNNER_TEMP/e2fsprogs"
+
+      - name: e2fsprogs through the broker
+        run: sh tests/test_e2fsprogs_broker.sh "$PWD/build/wparted_broker_harness" "$RUNNER_TEMP/e2fsprogs" "$RUNNER_TEMP/e2test"
 
       - name: Upload reference images
         uses: actions/upload-artifact@v4
@@ -82,6 +90,8 @@ jobs:
             mingw-w64-ucrt-x86_64-librsvg
             mingw-w64-ucrt-x86_64-gettext-tools
             mingw-w64-ucrt-x86_64-gtk-update-icon-cache
+            make
+            patch
 
       - name: Version
         id: version
@@ -98,6 +108,12 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DWPARTED_WERROR=ON
           cmake --build build
+
+      # mke2fs, e2fsck, tune2fs, dumpe2fs, resize2fs with the broker I/O manager.
+      - name: Build the e2fsprogs helpers
+        run: |
+          CC=gcc helpers/e2fsprogs/build.sh build/e2fsprogs
+          cp build/e2fsprogs/*.exe build/e2fsprogs/mke2fs.conf build/
 
       - uses: actions/download-artifact@v4
         with:
@@ -121,6 +137,7 @@ jobs:
             $disk = (Get-DiskImage -ImagePath $vhd | Get-Disk).Number
             Write-Host "Virtual test disk: $disk"
             $env:WPARTED_TEST_VHD_DISK = "$disk"
+            $env:WPARTED_REQUIRE_HELPERS = "1"
             & .\build\wparted_win_tests.exe
             if ($LASTEXITCODE -ne 0) { throw "integration tests failed" }
           } finally {
@@ -129,7 +146,7 @@ jobs:
           }
 
       - name: Bundle
-        run: scripts/bundle-windows.sh build dist/WParted
+        run: HELPERS_DIR=build/e2fsprogs scripts/bundle-windows.sh build dist/WParted
 
       # Read only scan of the runner's real disks plus a short display of the
       # main window from the bundle, checking the GTK runtime is complete.

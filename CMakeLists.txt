@@ -58,6 +58,9 @@ add_library(wparted_disk STATIC
 	src/WinSandbox.cc
 	src/WinCapabilities.cc
 	src/WinFsUsage.cc
+	src/WinSwap.cc
+	src/WinHelpers.cc
+	src/WinComponents.cc
 	src/WinFsProbe.cc
 	src/WinScan.cc
 	src/PartedWin32Bridge.cc
@@ -170,6 +173,7 @@ if(WPARTED_BUILD_GUI)
 		src/xfs.cc
 		src/WinFsOps.cc
 		src/WinNativeFS.cc
+		src/WinLinuxFS.cc
 	)
 
 	configure_file(resources/wparted.rc.in "${CMAKE_CURRENT_BINARY_DIR}/wparted.rc" @ONLY)
@@ -242,12 +246,22 @@ if(WPARTED_BUILD_TESTS)
 		tests/test_WinBroker.cc
 		tests/test_WinCapabilities.cc
 		tests/test_WinFsUsage.cc
+		tests/test_WinSwap.cc
+		tests/test_WinHelpers.cc
 	)
 	target_include_directories(wparted_unit_tests PRIVATE tests)
 	target_link_libraries(wparted_unit_tests PRIVATE wparted_disk wparted_broker_client GTest::gtest_main)
 	add_test(NAME wparted_unit_tests COMMAND wparted_unit_tests)
 	if(DEFINED ENV{WPARTED_TEST_IMAGES})
 		set_tests_properties(wparted_unit_tests PROPERTIES ENVIRONMENT "WPARTED_TEST_IMAGES=$ENV{WPARTED_TEST_IMAGES}")
+	endif()
+
+	if(NOT WIN32)
+		# Serves an image file through the broker to the e2fsprogs tools built by
+		# helpers/e2fsprogs/build.sh (tests/test_e2fsprogs_broker.sh).
+		find_package(Threads REQUIRED)
+		add_executable(wparted_broker_harness tests/broker_harness.cc)
+		target_link_libraries(wparted_broker_harness PRIVATE wparted_disk Threads::Threads)
 	endif()
 
 	if(WIN32)

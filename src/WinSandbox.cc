@@ -405,6 +405,17 @@ Result run(const Options& options)
 	add_env(std::wstring(L"SystemRoot=") + sysroot);
 	add_env(L"LANG=C");
 	add_env(L"LC_ALL=C");
+	for (const std::string& e : options.environment)
+	{
+		size_t eq = e.find('=');
+		if (eq == 0 || eq == std::string::npos || e.find('\0') != std::string::npos ||
+		    e.compare(0, 15, "WPARTED_BROKER=") == 0)
+		{
+			result.failure = "invalid environment entry for the helper";
+			return result;
+		}
+		add_env(widen(e));
+	}
 	if (options.session)
 		add_env(L"WPARTED_BROKER=" +
 		        std::to_wstring(reinterpret_cast<intptr_t>(rep_child.get())) + L"," +

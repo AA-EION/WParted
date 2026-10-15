@@ -50,6 +50,7 @@ struct Options
 	std::vector<std::string> args;          // argv[1..], UTF-8
 	WinDisk::DiskSession*    session = nullptr;   // Disk access, or none
 	std::string              input;         // Written to stdin, then closed
+	std::vector<std::string> environment;   // Extra "NAME=value" entries, UTF-8
 	uint32_t                 timeout_ms = 0;      // 0 = no limit
 	uint64_t                 memory_limit = 2ULL * 1024 * 1024 * 1024;
 	// Called from a worker thread with each chunk of output as it arrives.

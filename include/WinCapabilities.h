@@ -106,6 +106,7 @@ struct Components
 	bool        wsl_distro_ready = false; // WParted-Linux imported and verified
 	std::vector<std::string> wsl_kernel_fs;  // File systems the WSL kernel offers (empty: assume ext4/xfs/btrfs/f2fs)
 	bool        experimental = false;     // Experimental features switched on
+	bool        block_copy = false;       // This WParted moves and copies partitions
 };
 
 

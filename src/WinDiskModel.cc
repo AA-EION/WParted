@@ -1457,7 +1457,7 @@ std::vector<Extent> changed_extents(const DiskLayout& before, const DiskLayout& 
 }
 
 
-static bool holds_data(const DiskLayout& layout, const LayoutEntry& e)
+bool holds_data(const DiskLayout& layout, const LayoutEntry& e)
 {
 	if (e.length == 0)
 		return false;
