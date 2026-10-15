@@ -59,6 +59,11 @@ int wpb_flush(wpb_client* c);
 /* Send CLOSE and release the client. */
 void wpb_close(wpb_client* c);
 
+/* Send one raw request without any client side checks.  Only for tests that
+ * play the part of a misbehaving helper: the WParted side must refuse it. */
+int wpb_unchecked_request(wpb_client* c, uint32_t op, uint64_t offset, uint32_t length,
+                          const void* data, void* out, uint32_t out_len);
+
 /* Text for a broker status. */
 const char* wpb_strerror(int status);
 

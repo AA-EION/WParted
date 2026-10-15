@@ -325,6 +325,13 @@ void wpb_close(wpb_client* c)
 }
 
 
+int wpb_unchecked_request(wpb_client* c, uint32_t op, uint64_t offset, uint32_t length,
+                          const void* data, void* out, uint32_t out_len)
+{
+	return exchange(c, op, offset, length, data, out, out_len);
+}
+
+
 const char* wpb_strerror(int status)
 {
 	switch (status)

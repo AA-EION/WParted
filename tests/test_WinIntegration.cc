@@ -30,12 +30,14 @@
 #include "WinDevNames.h"
 #include "WinVolumeOps.h"
 #include "Win32Volumes.h"
+#include "WinSandbox.h"
 
 #include "gtest/gtest.h"
 
 #include <windows.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -447,6 +449,107 @@ TEST_F(WinIntegration, I_BackToGpt)
 	new_table("gpt");
 	EXPECT_EQ(TableStyle::GPT, layout().style);
 	EXPECT_EQ(0u, layout().entries.size());
+}
+
+
+// Runs without a test disk: the sandbox must keep a helper away from disks and
+// volumes even though the test itself runs as administrator.
+TEST(WinSandboxConfinement, HelperCannotOpenDisksOrWriteFiles)
+{
+	HANDLE h = CreateFileW(L"\\\\.\\PhysicalDrive0", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+	                       OPEN_EXISTING, 0, nullptr);
+	bool admin = h != INVALID_HANDLE_VALUE;
+	if (admin)
+		CloseHandle(h);
+
+	WinSandbox::Options opt;
+	opt.program = "wparted-sandbox-probe";
+	opt.timeout_ms = 60000;
+	WinSandbox::Result r = WinSandbox::run(opt);
+	ASSERT_TRUE(r.started) << r.failure;
+	EXPECT_EQ(0, r.exit_code) << r.error;
+	std::fprintf(stderr, "probe output:\n%s", r.output.c_str());
+	EXPECT_NE(std::string::npos, r.output.find("disk=denied")) << r.output;
+	EXPECT_NE(std::string::npos, r.output.find("volume=denied")) << r.output;
+	EXPECT_NE(std::string::npos, r.output.find("file=denied")) << r.output;
+	EXPECT_NE(std::string::npos, r.output.find("broker=none")) << r.output;
+	if (! admin)
+		std::fprintf(stderr, "note: the test is not running as administrator\n");
+}
+
+
+TEST(WinSandboxConfinement, HelperNamesAreChecked)
+{
+	EXPECT_EQ("", WinSandbox::helper_path("..\\..\\Windows\\System32\\cmd"));
+	EXPECT_EQ("", WinSandbox::helper_path("C:\\Windows\\System32\\cmd"));
+	EXPECT_EQ("", WinSandbox::helper_path("cmd"));
+	WinSandbox::Options opt;
+	opt.program = "../cmd";
+	EXPECT_FALSE(WinSandbox::run(opt).started);
+}
+
+
+TEST_F(WinIntegration, J_SandboxedHelperOnlyReachesItsPartition)
+{
+	ASSERT_EQ(1, create(PED_PARTITION_NORMAL, 1 * MiB, 101 * MiB - 1, "ext4"));
+	ASSERT_EQ(2, create(PED_PARTITION_NORMAL, 101 * MiB, 201 * MiB - 1, "ext4"));
+	WinDisk::DiskBackend* backend = WinDisk::get_backend();
+	std::string error;
+
+	// Mark the first sector of partition 2 to check it is never written.
+	std::vector<uint8_t> mark(512, 0xC3);
+	ASSERT_TRUE(backend->write_sectors(s_disk, 101 * MiB, 1, 512, mark.data(), error)) << error;
+
+	{
+		auto session = backend->open_session(s_disk, 1 * 1024 * 1024, 100 * 1024 * 1024, true,
+		                                     WinDisk::SessionRange::INSIDE_PARTITION, error);
+		ASSERT_TRUE(session) << error;
+		WinSandbox::Options opt;
+		opt.program = "wparted-sandbox-probe";
+		opt.args = { "write" };
+		opt.session = session.get();
+		opt.timeout_ms = 60000;
+		WinSandbox::Result r = WinSandbox::run(opt);
+		ASSERT_TRUE(r.started) << r.failure;
+		std::fprintf(stderr, "probe output:\n%s", r.output.c_str());
+		EXPECT_EQ(0, r.exit_code) << r.error;
+		EXPECT_NE(std::string::npos, r.output.find("disk=denied")) << r.output;
+		EXPECT_NE(std::string::npos, r.output.find("broker=ok size=104857600 ss=512 ro=0")) << r.output;
+		EXPECT_NE(std::string::npos, r.output.find("write0=ok")) << r.output;
+		EXPECT_NE(std::string::npos, r.output.find("write_past_end=refused")) << r.output;
+		EXPECT_NE(std::string::npos, r.output.find("read_past_end=refused")) << r.output;
+		EXPECT_NE(std::string::npos, r.output.find("write_huge=refused")) << r.output;
+		EXPECT_GE(r.broker.refused, 3u);
+		EXPECT_EQ(4096u, r.broker.bytes_written);
+	}
+
+	std::vector<uint8_t> sector(512);
+	ASSERT_TRUE(backend->read_sectors(s_disk, 1 * MiB, 1, 512, sector.data(), error)) << error;
+	EXPECT_EQ(0, std::memcmp(sector.data(), "WPARTED-SANDBOX", 15));
+	ASSERT_TRUE(backend->read_sectors(s_disk, 101 * MiB, 1, 512, sector.data(), error)) << error;
+	EXPECT_EQ(mark, sector);
+
+	// Read-only session: the helper's write is refused.
+	{
+		auto session = backend->open_session(s_disk, 1 * 1024 * 1024, 100 * 1024 * 1024, false,
+		                                     WinDisk::SessionRange::INSIDE_PARTITION, error);
+		ASSERT_TRUE(session) << error;
+		std::vector<uint8_t> zero(4096, 0);
+		WinSandbox::Options opt;
+		opt.program = "wparted-sandbox-probe";
+		opt.args = { "write" };
+		opt.session = session.get();
+		opt.timeout_ms = 60000;
+		WinSandbox::Result r = WinSandbox::run(opt);
+		ASSERT_TRUE(r.started) << r.failure;
+		EXPECT_NE(std::string::npos, r.output.find("ro=1")) << r.output;
+		EXPECT_NE(std::string::npos, r.output.find("write0=fail")) << r.output;
+		EXPECT_EQ(0u, r.broker.bytes_written);
+	}
+
+	// Sessions are refused across partition boundaries.
+	EXPECT_FALSE(backend->open_session(s_disk, 100 * 1024 * 1024, 2 * 1024 * 1024, true,
+	                                   WinDisk::SessionRange::INSIDE_PARTITION, error));
 }
 
 

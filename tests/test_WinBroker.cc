@@ -20,6 +20,7 @@
 
 #include "WinBroker.h"
 #include "WinDiskModel.h"
+#include "WinSandbox.h"
 #include "MemDiskBackend.h"
 #include "wpbroker.h"
 
@@ -480,6 +481,22 @@ TEST_F(BrokerTest, ReadOnlyClientCannotWrite)
 	wpb_close(c);
 	server_thread.join();
 	EXPECT_EQ(static_cast<uint8_t>(2048), disk_byte(1 * MiB));
+}
+
+
+TEST(Sandbox, CommandLineQuoting)
+{
+	using WinSandbox::quote_argument;
+	EXPECT_EQ(L"plain", quote_argument(L"plain"));
+	EXPECT_EQ(L"\"\"", quote_argument(L""));
+	EXPECT_EQ(L"\"two words\"", quote_argument(L"two words"));
+	EXPECT_EQ(L"\"say \\\"hi\\\"\"", quote_argument(L"say \"hi\""));
+	// Backslashes are only special before a quote
+	EXPECT_EQ(L"C:\\dir\\file", quote_argument(L"C:\\dir\\file"));
+	EXPECT_EQ(L"\"C:\\my dir\\\\\"", quote_argument(L"C:\\my dir\\"));
+	EXPECT_EQ(L"\"a\\\\\\\"b\"", quote_argument(L"a\\\"b"));
+	// A label trying to inject another argument stays one argument
+	EXPECT_EQ(L"\"x\\\" -O ^has_journal \\\"\"", quote_argument(L"x\" -O ^has_journal \""));
 }
 
 

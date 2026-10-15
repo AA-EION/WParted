@@ -55,6 +55,7 @@ add_library(wparted_disk STATIC
 	src/WinDiskModel.cc
 	src/WinDevNames.cc
 	src/WinBroker.cc
+	src/WinSandbox.cc
 	src/WinFsProbe.cc
 	src/WinScan.cc
 	src/PartedWin32Bridge.cc
@@ -69,7 +70,7 @@ target_compile_options(wparted_disk PRIVATE -Wall -Wextra -Wno-unused-parameter
 if(WIN32)
 	target_compile_definitions(wparted_disk PUBLIC
 		_WIN32_WINNT=0x0A00 WINVER=0x0A00 UNICODE _UNICODE NOMINMAX)
-	target_link_libraries(wparted_disk PUBLIC setupapi ole32 oleaut32 uuid wbemuuid)
+	target_link_libraries(wparted_disk PUBLIC setupapi ole32 oleaut32 uuid wbemuuid advapi32)
 endif()
 
 
@@ -250,5 +251,11 @@ if(WPARTED_BUILD_TESTS)
 		# virtual disk named by WPARTED_TEST_VHD_DISK (see tests/test_WinIntegration.cc).
 		add_executable(wparted_win_tests tests/test_WinIntegration.cc)
 		target_link_libraries(wparted_win_tests PRIVATE wparted_disk GTest::gtest_main)
+
+		# Plays a compromised helper inside the sandbox (see the test above).
+		add_executable(wparted-sandbox-probe helpers/test/sandbox_probe.c)
+		target_link_libraries(wparted-sandbox-probe PRIVATE wparted_broker_client)
+		target_link_options(wparted-sandbox-probe PRIVATE -static)
+		add_dependencies(wparted_win_tests wparted-sandbox-probe)
 	endif()
 endif()
