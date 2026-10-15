@@ -644,6 +644,10 @@ bool read_raw_table(const SectorReader& reader, uint32_t sector_size, int64_t to
 		}
 		if (sec[510] != 0x55 || sec[511] != 0xAA)
 		{
+			// Windows writes no EBR for an extended partition without
+			// logical partitions, leaving its first sector as it was.
+			if (ebr == ext_start)
+				break;
 			error = "EBR at sector " + num(ebr) + " has no boot signature";
 			return false;
 		}

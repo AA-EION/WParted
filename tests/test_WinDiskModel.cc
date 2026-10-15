@@ -496,6 +496,56 @@ TEST(RawTable, CorruptGptIsReported)
 }
 
 
+static void put_entry(uint8_t* e, uint8_t type, uint32_t lba, uint32_t sectors)
+{
+	e[4] = type;
+	for (int i = 0; i < 4; i++)
+	{
+		e[8 + i]  = static_cast<uint8_t>(lba >> (8 * i));
+		e[12 + i] = static_cast<uint8_t>(sectors >> (8 * i));
+	}
+}
+
+
+static void sign(std::vector<uint8_t>& img, uint64_t lba)
+{
+	img[lba * 512 + 510] = 0x55;
+	img[lba * 512 + 511] = 0xAA;
+}
+
+
+TEST(RawTable, EmptyExtendedWithoutEbr)
+{
+	// Windows writes no EBR for an extended partition without logicals.
+	std::vector<uint8_t> img(4096 * 512, 0);
+	put_entry(&img[446], 0x07, 2048, 1024);
+	put_entry(&img[446 + 16], 0x0F, 3072, 1024);
+	sign(img, 0);
+	RawTable raw;
+	std::string err;
+	ASSERT_TRUE(read_raw_table(image_reader(img, 512), 512, img.size() / 512, raw, err)) << err;
+	EXPECT_EQ(TableStyle::MBR, raw.style);
+	EXPECT_EQ(0x0F, raw.slots[1].type);
+	EXPECT_TRUE(raw.logicals.empty());
+}
+
+
+TEST(RawTable, UnsignedEbrInChainIsReported)
+{
+	// First EBR is valid and links to a second one without a signature.
+	std::vector<uint8_t> img(4096 * 512, 0);
+	put_entry(&img[446], 0x0F, 2048, 2048);
+	sign(img, 0);
+	put_entry(&img[2048 * 512 + 446], 0x07, 1, 511);
+	put_entry(&img[2048 * 512 + 446 + 16], 0x05, 512, 512);
+	sign(img, 2048);
+	RawTable raw;
+	std::string err;
+	EXPECT_FALSE(read_raw_table(image_reader(img, 512), 512, img.size() / 512, raw, err));
+	EXPECT_NE(std::string::npos, err.find("no boot signature")) << err;
+}
+
+
 TEST(RawTable, HybridMbrDetected)
 {
 	std::vector<uint8_t> img;

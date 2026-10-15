@@ -279,14 +279,9 @@ bool MemDiskBackend::encode(MemDisk& d, const DiskLayout& layout, bool new_table
 		{
 			uint64_t ext_start = ext->offset / ss;
 			uint64_t ebr = ext_start;
+			// Like Windows, an empty extended partition gets no EBR: the
+			// sector at its start is left as it was.
 			size_t groups = (layout.entries.size() - 4) / 4;
-			if (groups == 0)
-			{
-				uint8_t* s = d.sector(ebr);
-				std::memset(s, 0, ss);
-				s[510] = 0x55;
-				s[511] = 0xAA;
-			}
 			for (size_t g = 0; g < groups; g++)
 			{
 				const LayoutEntry* logical = nullptr;
