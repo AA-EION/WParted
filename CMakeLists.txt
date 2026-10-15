@@ -174,6 +174,7 @@ if(WPARTED_BUILD_GUI)
 		src/WinFsOps.cc
 		src/WinNativeFS.cc
 		src/WinLinuxFS.cc
+		src/WinCapsText.cc
 	)
 
 	configure_file(resources/wparted.rc.in "${CMAKE_CURRENT_BINARY_DIR}/wparted.rc" @ONLY)

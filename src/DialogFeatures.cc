@@ -22,6 +22,11 @@
 #include "WParted_Core.h"
 #include "Utils.h"
 
+#if defined(_WIN32)
+#include "WinCapsText.h"
+#include <glibmm/markup.h>
+#endif
+
 #include <gtkmm/stock.h>
 #include <gdkmm/pixbuf.h>
 #include <gtkmm/treeview.h>
@@ -76,7 +81,13 @@ DialogFeatures::DialogFeatures()
 	col->pack_start(m_treeview_filesystems_columns.online_label, false);
 	m_treeview_filesystems.append_column(*col);
 	m_treeview_filesystems.append_column(_("UUID"), m_treeview_filesystems_columns.uuid);
+#if defined(_WIN32)
+	/* TO TRANSLATORS: column header, who carries out the actions: Windows, WParted, ... */
+	m_treeview_filesystems.append_column(_("Done By"), m_treeview_filesystems_columns.software);
+	m_treeview_filesystems.set_tooltip_column(m_treeview_filesystems_columns.tooltip.index());
+#else
 	m_treeview_filesystems.append_column(_("Required Software"), m_treeview_filesystems_columns.software);
+#endif
 	m_treeview_filesystems.get_selection()->set_mode(Gtk::SELECTION_NONE);
 	m_treeview_filesystems.set_rules_hint(true);
 
@@ -97,6 +108,10 @@ DialogFeatures::DialogFeatures()
 	Glib::ustring str_temp( _("This chart shows the actions supported on file systems.") ) ;
 	str_temp += "\n" ;
 	str_temp += _("Not all actions are available on all file systems, in part due to the nature of file systems and limitations in the required software.") ;
+#if defined(_WIN32)
+	str_temp += "\n";
+	str_temp += _("Point at a file system to see who carries out each action and why the others are not available.");
+#endif
 	Gtk::Label *label_narrative = Utils::mk_label(str_temp, true, true);
 	label_narrative->set_max_width_chars(45);
 	legend_narrative_hbox->pack_start(*label_narrative, Gtk::PACK_EXPAND_WIDGET);
@@ -165,6 +180,15 @@ DialogFeatures::DialogFeatures()
 	m_legend_frame.add(*legend_hbox);
 	this->get_content_area()->pack_start(m_legend_frame, Gtk::PACK_SHRINK);
 
+#if defined(_WIN32)
+	m_components_label = Utils::mk_label("", true, true, true);
+	m_components_label->set_margin_start(12);
+	m_components_frame.set_label_widget(*Utils::mk_label("<b>" + Glib::ustring(_("Components")) + "</b>"));
+	m_components_frame.set_shadow_type(Gtk::SHADOW_NONE);
+	m_components_frame.add(*m_components_label);
+	this->get_content_area()->pack_start(m_components_frame, Gtk::PACK_SHRINK);
+#endif
+
 	/*TO TRANSLATORS: This is a button that will search for the software tools installed and then refresh the screen with the file system actions supported. */
 	add_button( _("Rescan For Supported Actions"), Gtk::RESPONSE_OK );
 	add_button( Gtk::Stock::CLOSE, Gtk::RESPONSE_CLOSE ) ->grab_focus() ;
@@ -175,6 +199,18 @@ DialogFeatures::DialogFeatures()
 void DialogFeatures::load_filesystems(const std::vector<FS>& fss)
 {
 	m_liststore_filesystems->clear();
+
+#if defined(_WIN32)
+	// Every file system WParted recognises, with what can and can't be done.
+	for (unsigned i = 0; i < fss.size(); i++)
+	{
+		if (! WinCapsText::explain(fss[i].fstype, Caps::DiskContext()).empty())
+			load_one_filesystem(fss[i]);
+	}
+	if (m_components_label)
+		m_components_label->set_text(WinCapsText::components());
+	return;
+#endif
 
 	// Fill the features chart with fully supported file systems.
 	for (unsigned i = 0; i < fss.size(); i++)
@@ -212,7 +248,14 @@ void DialogFeatures::load_one_filesystem(const FS& fs)
 	m_treerow[m_treeview_filesystems_columns.online_label ] = fs.online_write_label ? m_icon_yes : m_icon_blank;
 	m_treerow[m_treeview_filesystems_columns.uuid         ] = fs.write_uuid         ? m_icon_yes : m_icon_no;
 
+#if defined(_WIN32)
+	m_treerow[m_treeview_filesystems_columns.software] = WinCapsText::providers(fs.fstype);
+	m_treerow[m_treeview_filesystems_columns.tooltip] =
+	        "<b>" + Glib::Markup::escape_text(Utils::get_filesystem_string(fs.fstype)) + "</b>\n" +
+	        Glib::Markup::escape_text(WinCapsText::explain(fs.fstype, Caps::DiskContext()));
+#else
 	m_treerow[m_treeview_filesystems_columns.software] = Utils::get_filesystem_software(fs.fstype);
+#endif
 }
 
 

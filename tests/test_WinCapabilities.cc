@@ -301,5 +301,39 @@ TEST(Capabilities, ReasonsForWparted)
 }
 
 
+TEST(Capabilities, Summary)
+{
+	DiskContext disk;
+	Components comps;
+	comps.wparted_tools = true;
+
+	Summary s = summarise("btrfs", disk, comps);
+	EXPECT_TRUE(s.recognised);
+	EXPECT_EQ(std::vector<Op>{ Op::INFO }, s.by_wparted);
+	ASSERT_FALSE(s.unavailable.empty());
+	size_t ops = 0;
+	for (const Summary::Group& g : s.unavailable)
+	{
+		EXPECT_STRNE("", g.reason);
+		ops += g.ops.size();
+	}
+	EXPECT_EQ(all_ops().size() - 1, ops);
+
+	s = summarise("apfs", disk, comps);
+	EXPECT_TRUE(s.read_only);
+	EXPECT_EQ(std::vector<Op>{ Op::INFO }, s.by_wparted);
+
+	s = summarise("ntfs", disk, comps);
+	EXPECT_EQ(6u, s.by_windows.size());   // Info, create, check, label, grow, shrink
+	EXPECT_TRUE(s.by_wsl.empty());
+
+	s = summarise("linux-swap", disk, comps);
+	for (const Summary::Group& g : s.unavailable)
+		EXPECT_NE(State::NOT_APPLICABLE, g.state);
+
+	EXPECT_FALSE(summarise("", disk, comps).recognised);
+}
+
+
 }  // namespace Caps
 }  // namespace WParted

@@ -140,6 +140,28 @@ struct Capability
 Capability resolve(const std::string& fs, Op op, const DiskContext& disk, const Components& comps);
 
 
+// Everything about one file system, for explanations in the user interface:
+// who does what, and the operations that can't be done, grouped by reason.
+struct Summary
+{
+	std::vector<Op> by_windows;
+	std::vector<Op> by_wparted;
+	std::vector<Op> by_wsl;
+	struct Group
+	{
+		State           state;
+		const char*     reason;   // Translatable
+		const char*     fix;      // Translatable, may be empty
+		std::string     detail;
+		std::vector<Op> ops;
+	};
+	std::vector<Group> unavailable;   // NOT_APPLICABLE operations are left out
+	bool read_only = false;           // macOS: read-only by design
+	bool recognised = false;          // A file system family WParted knows
+};
+Summary summarise(const std::string& fs, const DiskContext& disk, const Components& comps);
+
+
 }  // namespace Caps
 }  // namespace WParted
 

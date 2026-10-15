@@ -47,6 +47,8 @@ private:
 	void load_one_filesystem(const FS& fs);
 
 	Gtk::Frame                   m_legend_frame;
+	Gtk::Frame                   m_components_frame;
+	Gtk::Label*                  m_components_label = nullptr;
 	Gtk::TreeView                m_treeview_filesystems;
 	Gtk::TreeRow                 m_treerow;
 	Gtk::ScrolledWindow          m_filesystems_scrolled;
@@ -67,6 +69,7 @@ private:
 		Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> online_label;
 		Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> uuid;
 		Gtk::TreeModelColumn<Glib::ustring> software;
+		Gtk::TreeModelColumn<Glib::ustring> tooltip;   // Markup
 
 		TreeView_FileSystems_Columns()
 		{ 
@@ -83,6 +86,7 @@ private:
 			add(online_label);
 			add(uuid);
 			add(software);
+			add(tooltip);
 		}
 	};
 

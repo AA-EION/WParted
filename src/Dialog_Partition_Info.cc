@@ -23,6 +23,9 @@
 #include "Partition.h"
 #include "Utils.h"
 #include "btrfs.h"
+#if defined(_WIN32)
+#include "WinCapsText.h"
+#endif
 
 #include <atkmm/relation.h>
 #include <cairomm/context.h>
@@ -565,6 +568,28 @@ void Dialog_Partition_Info::Display_Info()
 
 	//ensure left row tracker set to largest side (left/right)
 	top = std::max( top, topright );
+
+#if defined(_WIN32)
+	// What WParted can do with this file system on Windows, and why not the rest.
+	if (m_partition.status != STAT_NEW && m_partition.type != TYPE_UNALLOCATED && m_partition.type != TYPE_EXTENDED)
+	{
+		Caps::DiskContext disk;
+		disk.known = true;
+		disk.partition_busy = filesystem_ptn.busy;
+		Glib::ustring support = WinCapsText::explain(filesystem_ptn.fstype, disk);
+		if (! support.empty())
+		{
+			Gtk::Label* label_support = Utils::mk_label("<b>" + Glib::ustring(_("On Windows:")) + "</b>",
+			                                            true, false, false, Gtk::ALIGN_START);
+			grid->attach(*label_support, 1, top, 1, 1);
+			Gtk::Label* value_support = Utils::mk_label(support, false, true, true, Gtk::ALIGN_START);
+			value_support->set_max_width_chars(60);
+			grid->attach(*value_support, 2, top++, 4, 1);
+			value_support->get_accessible()->add_relationship(Atk::RELATION_LABELLED_BY,
+			                                                  label_support->get_accessible());
+		}
+	}
+#endif
 
 	// One blank line
 	grid->attach(*Utils::mk_label(""), 0, top++, 6, 1);

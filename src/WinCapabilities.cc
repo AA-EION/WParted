@@ -336,5 +336,41 @@ Capability resolve(const std::string& fs, Op op, const DiskContext& disk, const 
 }
 
 
+Summary summarise(const std::string& fs, const DiskContext& disk, const Components& comps)
+{
+	Summary s;
+	Family f = family_of(fs);
+	s.recognised = f != Family::NONE;
+	s.read_only = f == Family::APPLE;
+	for (Op op : all_ops())
+	{
+		Capability c = resolve(fs, op, disk, comps);
+		if (c.state == State::NOT_APPLICABLE)
+			continue;
+		if (c.available())
+		{
+			if (c.provider == Provider::WINDOWS)
+				s.by_windows.push_back(op);
+			else if (c.provider == Provider::WPARTED)
+				s.by_wparted.push_back(op);
+			else if (c.provider == Provider::WSL)
+				s.by_wsl.push_back(op);
+			continue;
+		}
+		auto g = std::find_if(s.unavailable.begin(), s.unavailable.end(), [&](const Summary::Group& x)
+		{
+			return std::string(x.reason) == c.reason && x.detail == c.detail;
+		});
+		if (g == s.unavailable.end())
+		{
+			s.unavailable.push_back(Summary::Group{ c.state, c.reason, c.fix, c.detail, {} });
+			g = s.unavailable.end() - 1;
+		}
+		g->ops.push_back(op);
+	}
+	return s;
+}
+
+
 }  // namespace Caps
 }  // namespace WParted

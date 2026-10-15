@@ -42,6 +42,7 @@
 #if defined(_WIN32)
 #include "WinNativeFS.h"
 #include "WinLinuxFS.h"
+#include "WinComponents.h"
 #endif
 
 #include <memory>
@@ -151,6 +152,10 @@ void SupportedFileSystems::find_supported_filesystems()
 	// ..., FS_XFS, ... .  This ultimately controls the default order of the file
 	// systems in the menus and dialogs.
 	m_fs_support.clear();
+#if defined(_WIN32)
+	// "Rescan For Supported Actions" also looks for components again.
+	WinComponents::refresh();
+#endif
 
 	for (iter = m_fs_objects.begin(); iter != m_fs_objects.end(); iter++)
 	{
