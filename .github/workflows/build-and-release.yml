@@ -1,143 +1,220 @@
-name: Build, Test & Release WParted
+name: Build, test and release
 
 on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  build-and-test:
-    name: Build & Test (MSVC & MSYS2 UCRT64)
-    runs-on: windows-latest
-    permissions:
-      contents: write
-
+  # Partition table and file system probe tests against images made by the
+  # real Linux tools (sfdisk, sgdisk, mkfs.*, blkid).
+  linux-tests:
+    name: Unit tests (Linux, reference images)
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      # Set up MSYS2 with UCRT64 toolchain and GTKmm3
-      - name: Setup MSYS2 UCRT64
-        uses: msys2/setup-msys2@v2
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build g++ fdisk gdisk dosfstools e2fsprogs ntfs-3g \
+            exfatprogs btrfs-progs xfsprogs f2fs-tools cryptsetup-bin
+
+      - name: Create reference images
+        run: sh tests/make_test_images.sh "$RUNNER_TEMP/images"
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DWPARTED_BUILD_GUI=OFF -DWPARTED_WERROR=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          cmake --build build
+
+      - name: Unit tests
+        env:
+          WPARTED_TEST_IMAGES: ${{ runner.temp }}/images
+        run: ./build/wparted_unit_tests
+
+      - name: Upload reference images
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-images
+          path: ${{ runner.temp }}/images
+          retention-days: 3
+
+  windows:
+    name: Build and test (Windows, MSYS2 UCRT64)
+    needs: linux-tests
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
           install: >-
-            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
             mingw-w64-ucrt-x86_64-gtkmm3
             mingw-w64-ucrt-x86_64-adwaita-icon-theme
-            mingw-w64-ucrt-x86_64-glib2
+            mingw-w64-ucrt-x86_64-librsvg
+            mingw-w64-ucrt-x86_64-gettext-tools
+            mingw-w64-ucrt-x86_64-gtk-update-icon-cache
 
-      # Setup MSVC Developer Environment
-      - name: Setup MSVC Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
-
-      # Install Inno Setup for Installer Generation
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
-
-      # Install WinFsp SDK
-      - name: Install WinFsp
-        run: choco install winfsp --no-progress -y
-
-      # Build Native Binaries with MSVC / CMake
-      - name: Configure CMake (MSVC)
+      - name: Version
+        id: version
         run: |
-          cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release
+          version=$(sed -n 's/^[[:space:]]*VERSION \([0-9.]*\)$/\1/p' CMakeLists.txt | head -n 1)
+          echo "Version $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF#refs/tags/v}" != "$version" ]]; then
+            echo "::error::Tag $GITHUB_REF does not match project version $version"
+            exit 1
+          fi
 
-      - name: Build All Targets (MSVC)
+      - name: Build
         run: |
-          cmake --build build --config Release --parallel
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DWPARTED_WERROR=ON
+          cmake --build build
 
-      # Execute Unit Tests
-      - name: Run Unit Test Suite
+      - uses: actions/download-artifact@v4
+        with:
+          name: reference-images
+          path: images
+
+      - name: Unit tests
+        run: WPARTED_TEST_IMAGES="$PWD/images" ./build/wparted_unit_tests.exe
+
+      # Real partition table and file system operations through the Windows
+      # storage stack, on a throw away virtual disk only.
+      - name: Integration tests on a virtual disk
+        shell: pwsh
         run: |
-          .\build\wparted_tests.exe
+          $vhd = Join-Path $env:RUNNER_TEMP "wparted-test.vhdx"
+          "create vdisk file=`"$vhd`" maximum=2048 type=expandable`nselect vdisk file=`"$vhd`"`nattach vdisk" |
+            Set-Content -Encoding ascii "$env:RUNNER_TEMP\attach.txt"
+          diskpart /s "$env:RUNNER_TEMP\attach.txt"
+          if ($LASTEXITCODE -ne 0) { throw "diskpart failed" }
+          try {
+            $disk = (Get-DiskImage -ImagePath $vhd | Get-Disk).Number
+            Write-Host "Virtual test disk: $disk"
+            $env:WPARTED_TEST_VHD_DISK = "$disk"
+            & .\build\wparted_win_tests.exe
+            if ($LASTEXITCODE -ne 0) { throw "integration tests failed" }
+          } finally {
+            "select vdisk file=`"$vhd`"`ndetach vdisk" | Set-Content -Encoding ascii "$env:RUNNER_TEMP\detach.txt"
+            diskpart /s "$env:RUNNER_TEMP\detach.txt"
+          }
 
-      # Integration Tests on Virtual VHDX Loopback Disk
-      - name: Integration Test on VHDX Virtual Loopback Disk
-        shell: powershell
+      - name: Bundle
+        run: scripts/bundle-windows.sh build dist/WParted
+
+      # Read only scan of the runner's real disks plus a short display of the
+      # main window from the bundle, checking the GTK runtime is complete.
+      - name: Smoke test
+        shell: pwsh
         run: |
-          Write-Host "[*] Creating temporary 2GB VHDX loopback disk..."
-          $vhdPath = "$env:TEMP\wparted-test-disk.vhdx"
-          New-VHD -Path $vhdPath -SizeBytes 2GB -Dynamic
-          $disk = Mount-VHD -Path $vhdPath -PassThru | Get-Disk
+          $bin = (Resolve-Path dist\WParted\bin).Path
+          $out = Join-Path $env:RUNNER_TEMP "smoke-out.txt"
+          $err = Join-Path $env:RUNNER_TEMP "smoke-err.txt"
+          $p = Start-Process -FilePath (Join-Path $bin "wparted.exe") -ArgumentList "--smoke-test" `
+                 -WorkingDirectory $env:RUNNER_TEMP -NoNewWindow -Wait -PassThru `
+                 -RedirectStandardOutput $out -RedirectStandardError $err
+          Get-Content $out
+          Get-Content $err
+          if ($p.ExitCode -ne 0) { throw "smoke test failed with exit code $($p.ExitCode)" }
+          if (-not (Select-String -Path $out -Pattern "main window shown and closed" -Quiet)) {
+            throw "main window did not show"
+          }
 
-          Write-Host "[*] Initializing loopback disk as GPT..."
-          Initialize-Disk -Number $disk.Number -PartitionStyle GPT
-
-          Write-Host "[*] Creating test Basic Data Partition..."
-          $part = New-Partition -DiskNumber $disk.Number -UseMaximumSize -AssignDriveLetter
-          Format-Volume -DriveLetter $part.DriveLetter -FileSystem NTFS -NewFileSystemLabel "WPartedTest" -Confirm:$false
-
-          Write-Host "[*] Running WParted test CLI against VHDX disk..."
-          .\build\wparted_tests.exe --gtest_filter=Win32StorageEngineTest.*
-
-          Write-Host "[*] Cleaning up VHDX loopback disk..."
-          Dismount-VHD -Path $vhdPath
-          Remove-Item -Path $vhdPath -Force
-
-      # Bundle Standalone Portable Distribution
-      - name: Bundle Standalone Windows Distribution
-        shell: powershell
+      - name: Portable zip
+        shell: pwsh
         run: |
-          .\scripts\bundle-windows.ps1 -BuildDir "build" -Msys2Root "C:\msys64\ucrt64"
+          Compress-Archive -Path dist\WParted -DestinationPath "dist\WParted-${{ steps.version.outputs.version }}-win64-portable.zip"
 
-      # Compile Inno Setup Installer
-      - name: Compile Inno Setup Installer
+      - name: Installer
+        shell: pwsh
         run: |
-          iscc installer\wparted.iss
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          & $iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" installer\wparted.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
 
-      # Update SHA256SUMS with Installer
-      - name: Compute Checksums
-        shell: powershell
+      - name: Checksums
+        shell: pwsh
         run: |
-          Get-ChildItem -Path dist\*.zip, dist\*.exe | ForEach-Object {
-            $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
-            "$($hash.Hash)  $($_.Name)"
-          } | Out-File -FilePath dist\SHA256SUMS.txt -Encoding ascii
+          Get-ChildItem dist\*.zip, dist\*.exe | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content -Encoding ascii dist\SHA256SUMS.txt
           Get-Content dist\SHA256SUMS.txt
 
-      # Upload Artifacts to Workflow
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: WParted-win64-binaries
+          name: WParted-win64
           path: |
             dist/*.zip
             dist/*.exe
             dist/SHA256SUMS.txt
 
-      # Create GitHub Pre-Release on main branch push or tag
-      - name: Create GitHub Pre-Release
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  release:
+    name: Publish pre-release
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0.0-preview' }}
-          name: WParted Release ${{ github.ref_name }}
+          name: WParted-win64
+          path: dist
+
+      # The 1.0.0-preview release was built from the earlier, unsafe code base
+      # that this version replaces; do not leave it downloadable.
+      - name: Remove retired releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for tag in v1.0.0-preview; do
+            if gh release view "$tag" > /dev/null 2>&1; then
+              gh release delete "$tag" --cleanup-tag --yes
+            elif git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+              git push origin --delete "refs/tags/$tag"
+            fi
+          done
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: WParted ${{ github.ref_name }}
           prerelease: true
-          draft: false
           files: |
             dist/*.zip
             dist/*.exe
             dist/SHA256SUMS.txt
           body: |
-            ## WParted — Native Windows Partition Editor (Forked from GParted)
+            WParted ${{ github.ref_name }}: first pre-release of the Windows port of GParted.
 
-            ### Release Highlights
-            - **Preserved GParted UX Paradigm**: GTK visual partition bar, partition table list, alignment selectors, and pending operations queue.
-            - **Dual Nomenclature System**: Cross-platform device mapping (`\\.\PhysicalDrive0` <-> `/dev/sda`, `C:\` <-> `/dev/sda1`).
-            - **Pure Win32 Storage Engine (`WParted_Win32_Core`)**: Direct Windows Kernel DeviceIoControl, VDS COM, SetupDi, and RAII `Win32VolumeLockGuard`.
-            - **Live Online Shrink & Extend**: Resize running system volumes (`C:\`) live via VDS and `FSCTL_SHRINK_VOLUME`.
-            - **BitLocker Guard**: Protection state detection and seamless key suspension.
-            - **WSL2 Linux Bridge**: Native management of `ext2/3/4`, `btrfs`, `xfs`, `zfs`, `f2fs`, `linux-swap` via `wparted-wsl-engine`.
-            - **Read-Only APFS Driver**: Container inspection and read-only drive letter mounting via WinFsp.
-            - **Native Early Boot Helper (`wparted-boot.exe`)**: Locked system partition operations with CRC64 journaling.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            **Pre-release software for partitioning disks: back up your data first.**
+
+            * Installer: `WParted-*-win64-setup.exe`. Portable: `WParted-*-win64-portable.zip` (run `bin\wparted.exe`).
+            * Windows 10 or 11, 64 bit; runs as administrator.
+            * See the [README](https://github.com/AA-EION/WParted#readme) for what is supported on Windows.
