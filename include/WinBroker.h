@@ -133,11 +133,13 @@ public:
 
 	// Handle one request.  'data' holds 'req.length' bytes for OP_WRITE.  Fills
 	// the reply and, for INFO and READ, 'out'.  Returns false when the
-	// conversation must end (OP_CLOSE or a protocol error).
+	// conversation must end (a protocol error).  OP_CLOSE only marks the
+	// conversation as finished; serving continues until end of stream so a
+	// helper can never block itself by talking after closing.
 	bool handle(const Request& req, const uint8_t* data, Reply& reply, std::vector<uint8_t>& out);
 
-	// Serve requests until OP_CLOSE, end of stream or a protocol error.  Returns
-	// true only for an orderly OP_CLOSE.
+	// Serve requests until end of stream or a protocol error.  Returns true
+	// when the stream ended after an OP_CLOSE.
 	bool serve(Channel& channel);
 
 	const Statistics& statistics() const  { return m_stats; }
@@ -147,6 +149,7 @@ private:
 	WinDisk::DiskSession& m_session;
 	Statistics            m_stats;
 	std::string           m_last_error;
+	bool                  m_closed = false;
 };
 
 

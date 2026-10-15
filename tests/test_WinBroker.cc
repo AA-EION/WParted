@@ -382,16 +382,31 @@ struct PipePair
 #endif
 	}
 
+	static void close_one(intptr_t& h)
+	{
+		if (h == -1)
+			return;
+#if defined(_WIN32)
+		CloseHandle(reinterpret_cast<HANDLE>(h));
+#else
+		close(static_cast<int>(h));
+#endif
+		h = -1;
+	}
+
+	// End of stream for the server.
+	void close_client()
+	{
+		close_one(client_wr);
+		close_one(client_rd);
+	}
+
 	~PipePair()
 	{
-		for (intptr_t h : { client_rd, client_wr, server_rd, server_wr })
-		{
-#if defined(_WIN32)
-			CloseHandle(reinterpret_cast<HANDLE>(h));
-#else
-			close(static_cast<int>(h));
-#endif
-		}
+		close_one(client_rd);
+		close_one(client_wr);
+		close_one(server_rd);
+		close_one(server_wr);
 	}
 
 	PipeChannel server_channel()
@@ -455,6 +470,7 @@ TEST_F(BrokerTest, ClientLibraryAgainstServer)
 	EXPECT_NE(0, wpb_read(c, 8 * MiB - 1, back.data(), 2));
 	EXPECT_EQ(0, wpb_flush(c));
 	wpb_close(c);
+	pipes.close_client();
 	server_thread.join();
 	EXPECT_TRUE(orderly);
 	EXPECT_EQ(0u, stats.refused);
@@ -479,6 +495,7 @@ TEST_F(BrokerTest, ReadOnlyClientCannotWrite)
 	std::vector<uint8_t> data(512, 1);
 	EXPECT_NE(0, wpb_write(c, 0, data.data(), data.size()));
 	wpb_close(c);
+	pipes.close_client();
 	server_thread.join();
 	EXPECT_EQ(static_cast<uint8_t>(2048), disk_byte(1 * MiB));
 }

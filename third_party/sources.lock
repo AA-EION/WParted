@@ -1,0 +1,7 @@
+# Third party sources built into WParted's helper programs.
+# Every download is checked against the SHA-256 below before it is used.
+# Upstream signatures: e2fsprogs publishes a PGP signed sha256sums.asc next to
+# each release (key of Theodore Ts'o).
+#
+# name       version  sha256                                                            url
+e2fsprogs    1.47.4   fd5bf388cbdbe006a3d3b318d983b2948382440acc85a87f1e7d108653e8db0b  https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.47.4/e2fsprogs-1.47.4.tar.xz

@@ -1,0 +1,38 @@
+--- a/resize/main.c	2026-10-15 22:59:52.351753184 +0000
++++ b/resize/main.c	2026-10-15 23:16:40.032338499 +0000
+@@ -42,6 +42,10 @@
+ #include "../version.h"
+ 
+ char *program_name;
++#ifdef WPARTED_BROKER_IO
++extern int wparted_io_is_device(const char *name);
++#endif
++
+ static char *device_name, *io_options;
+ 
+ static void usage (char *prog)
+@@ -367,6 +371,14 @@
+ 	if (print_min_size)
+ 		open_flags = O_RDONLY;
+ 
++#ifdef WPARTED_BROKER_IO
++	/* WParted: the broker device is a partition, never a regular file. */
++	if (wparted_io_is_device(device_name)) {
++		memset(&st_buf, 0, sizeof(st_buf));
++		st_buf.st_mode = S_IFBLK;
++		fd = -1;
++	} else {
++#endif
+ 	fd = ext2fs_open_file(device_name, open_flags, 0);
+ 	if (fd < 0) {
+ 		com_err("open", errno, _("while opening %s"),
+@@ -396,6 +408,9 @@
+ 		close(fd);
+ 		fd = -1;
+ 	}
++#ifdef WPARTED_BROKER_IO
++	}
++#endif
+ 
+ #ifdef CONFIG_TESTIO_DEBUG
+ 	if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {

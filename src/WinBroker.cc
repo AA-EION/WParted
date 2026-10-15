@@ -179,7 +179,8 @@ bool Server::handle(const Request& req, const uint8_t* data, Reply& reply, std::
 		}
 
 		case OP_CLOSE:
-			return false;
+			m_closed = true;
+			return true;
 
 		default:
 			reply.status = STATUS_PROTOCOL;
@@ -198,8 +199,10 @@ bool Server::serve(Channel& channel)
 		uint8_t head[REQUEST_SIZE];
 		if (! channel.read_exact(head, REQUEST_SIZE))
 		{
-			m_last_error = "helper closed the connection";
-			return false;
+			// End of stream: orderly when the helper said goodbye first.
+			if (! m_closed)
+				m_last_error = "helper closed the connection";
+			return m_closed;
 		}
 		Request req;
 		decode_request(head, req);
@@ -233,7 +236,7 @@ bool Server::serve(Channel& channel)
 			return false;
 		}
 		if (! more)
-			return req.magic == REQUEST_MAGIC && req.op == OP_CLOSE;
+			return false;
 	}
 }
 

@@ -1,0 +1,32 @@
+--- a/lib/ext2fs/getsectsize.c	2026-10-15 22:59:52.331783879 +0000
++++ b/lib/ext2fs/getsectsize.c	2026-10-15 23:04:14.575445567 +0000
+@@ -49,8 +49,18 @@
+ /*
+  * Returns the logical sector size of a device
+  */
++#ifdef WPARTED_BROKER_IO
++/* WParted: the broker reports the real sector size of the disk. */
++extern int wparted_io_is_device(const char *name);
++extern errcode_t wparted_io_sector_size(int *sectsize);
++#endif
++
+ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
+ {
++#ifdef WPARTED_BROKER_IO
++	if (wparted_io_is_device(file))
++		return wparted_io_sector_size(sectsize);
++#endif
+ #ifdef _WIN32
+ 	*sectsize = 512; // just guessing
+ 	return 0;
+@@ -117,6 +127,10 @@
+  */
+ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
+ {
++#ifdef WPARTED_BROKER_IO
++	if (wparted_io_is_device(file))
++		return wparted_io_sector_size(sectsize);
++#endif
+ #ifdef _WIN32
+ 
+ 	return ext2fs_get_device_sectsize(file, sectsize);

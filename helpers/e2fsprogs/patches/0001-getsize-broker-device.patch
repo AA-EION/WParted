@@ -1,0 +1,44 @@
+--- a/lib/ext2fs/getsize.c	2026-10-15 22:59:52.331803459 +0000
++++ b/lib/ext2fs/getsize.c	2026-10-15 23:00:07.322315898 +0000
+@@ -71,7 +71,7 @@
+ #define HAVE_GET_FILE_SIZE_EX 1
+ #endif
+ 
+-errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
++static errcode_t ext2fs_get_device_size2_os(const char *file, int blocksize,
+ 				  blk64_t *retblocks)
+ {
+ 	int fd;
+@@ -139,7 +139,7 @@
+ /*
+  * Returns the number of blocks in a partition
+  */
+-errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
++static errcode_t ext2fs_get_device_size2_os(const char *file, int blocksize,
+ 				  blk64_t *retblocks)
+ {
+ 	int	fd, rc = 0;
+@@ -276,6 +276,23 @@
+ 
+ #endif /* WIN32 */
+ 
++
++#ifdef WPARTED_BROKER_IO
++/* WParted: the size of the broker device comes from the broker. */
++extern int wparted_io_is_device(const char *name);
++extern errcode_t wparted_io_device_size(int blocksize, blk64_t *retblocks);
++#endif
++
++errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
++				  blk64_t *retblocks)
++{
++#ifdef WPARTED_BROKER_IO
++	if (wparted_io_is_device(file))
++		return wparted_io_device_size(blocksize, retblocks);
++#endif
++	return ext2fs_get_device_size2_os(file, blocksize, retblocks);
++}
++
+ errcode_t ext2fs_get_device_size(const char *file, int blocksize,
+ 				 blk_t *retblocks)
+ {

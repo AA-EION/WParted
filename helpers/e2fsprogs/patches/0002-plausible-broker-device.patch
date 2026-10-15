@@ -1,0 +1,30 @@
+--- a/lib/support/plausible.c	2026-10-15 22:59:52.337750254 +0000
++++ b/lib/support/plausible.c	2026-10-15 23:02:21.899420365 +0000
+@@ -170,6 +170,10 @@
+ /*
+  * return 1 if the device looks plausible, creating the file if necessary
+  */
++#ifdef WPARTED_BROKER_IO
++extern int wparted_io_is_device(const char *name);
++#endif
++
+ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ {
+ 	int fd, ret, is_dev = 0;
+@@ -179,6 +183,16 @@
+ 	char *fs_type = NULL;
+ 	char *fs_label = NULL;
+ 
++#ifdef WPARTED_BROKER_IO
++	/* WParted: the broker device is the partition WParted chose; it has
++	 * already checked it is not in use. */
++	if (wparted_io_is_device(device)) {
++		if (ret_is_dev)
++			*ret_is_dev = 1;
++		return 1;
++	}
++#endif
++
+ 	fd = ext2fs_open_file(device, fl, 0666);
+ 	if ((fd < 0) && (errno == ENOENT) && (flags & NO_SIZE)) {
+ 		fprintf(stderr, _("The file %s does not exist and no "
