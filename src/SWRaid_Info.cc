@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2015 Mike Fleetwood
+/* Copyright (C) 2015 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -134,7 +132,11 @@ void SWRaid_Info::initialise_if_required()
 
 void SWRaid_Info::set_command_found()
 {
+#if defined(_WIN32)
+	mdadm_found = false;  // No Linux software RAID on Windows
+#else
 	mdadm_found = ! Glib::find_program_in_path( "mdadm" ).empty();
+#endif
 }
 
 void SWRaid_Info::load_swraid_info_cache()

@@ -1,8 +1,6 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart
+/* Copyright (C) 2004 Bart
  * Copyright (C) 2008, 2009, 2010, 2011 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -421,7 +419,7 @@ void Dialog_Progress::on_save()
 			<< " lang='" << Utils::get_lang() << "'>" << std::endl
 			<< "<head>" << std::endl
 			<< "<meta http-equiv='Content-Type' content='text/html;charset=utf-8' />" << std::endl
-			<< "<title>" << _("GParted Details") << "</title>" << std::endl
+			<< "<title>" << _("WParted Details") << "</title>" << std::endl
 			<< "<style type='text/css'>" << std::endl
 			<< "table {border:0}" << std::endl  // Disable borders for all tables
 			<< "th {text-align:left}" << std::endl  // Left align all table headers

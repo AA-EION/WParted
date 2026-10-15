@@ -124,8 +124,8 @@ msgstr ""
 #. ==== GUI =========================
 #: ../gparted.desktop.in.in.h:1 ../src/Win_GParted.cc:90
 #: ../src/Win_GParted.cc:1659 ../src/Win_GParted.cc:1888
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 # editor/bewerker
 #: ../gparted.desktop.in.in.h:2
@@ -670,8 +670,8 @@ msgid "Save Details"
 msgstr "Details opslaan"
 
 #: ../src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "Details GParted"
+msgid "WParted Details"
+msgstr "Details WParted"
 
 # schijf/station
 # laudaka: Dit was de enige plaats waar nog ``station'' stond.
@@ -1064,8 +1064,8 @@ msgstr "Map %1 verwijderd"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: ../src/GParted_Core.cc:66 ../src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "GParted fout"
+msgid "WParted Bug"
+msgstr "WParted fout"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: ../src/GParted_Core.cc:178 ../src/GParted_Core.cc:187
@@ -1129,8 +1129,8 @@ msgid "The file system is damaged"
 msgstr "Het bestandssysteem is beschadigd"
 
 #: ../src/GParted_Core.cc:1369
-msgid "The file system is unknown to GParted"
-msgstr "GParted kent dit bestandssysteem niet"
+msgid "The file system is unknown to WParted"
+msgstr "WParted kent dit bestandssysteem niet"
 
 # beschikbaar weglaten?
 #: ../src/GParted_Core.cc:1371
@@ -2115,8 +2115,8 @@ msgid "_Devices"
 msgstr "_Schijven"
 
 #: ../src/Win_GParted.cc:191
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:220
 msgid "_Edit"
@@ -2274,8 +2274,8 @@ msgstr[0] "%1 bewerking in de wachtrij"
 msgstr[1] "%1 bewerkingen in de wachtrij"
 
 #: ../src/Win_GParted.cc:1167
-msgid "Quit GParted?"
-msgstr "GParted afsluiten?"
+msgid "Quit WParted?"
+msgstr "WParted afsluiten?"
 
 #: ../src/Win_GParted.cc:1173
 msgid "%1 operation is currently pending."
@@ -2284,8 +2284,8 @@ msgstr[0] "Er staat nog %1 bewerking in de wachtrij."
 msgstr[1] "Er staan nog %1 bewerkingen in de wachtrij."
 
 #: ../src/Win_GParted.cc:1584
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 # schijven/stations/apparaten
 #: ../src/Win_GParted.cc:1635

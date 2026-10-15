@@ -62,8 +62,8 @@ msgstr "GParted परियोजना"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:3 src/Win_GParted.cc:89 src/Win_GParted.cc:1654
 #: src/Win_GParted.cc:1883
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:4
 msgid "Partition Editor"
@@ -558,8 +558,8 @@ msgid "Save Details"
 msgstr "विवरण सहेजें"
 
 #: src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "GParted का विवरण"
+msgid "WParted Details"
+msgstr "WParted का विवरण"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:427
@@ -811,8 +811,8 @@ msgstr "%1 निर्देशिका हटाई गई"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: src/GParted_Core.cc:68 src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "GParted बग"
+msgid "WParted Bug"
+msgstr "WParted बग"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:180 src/GParted_Core.cc:189
@@ -870,8 +870,8 @@ msgid "The file system is damaged"
 msgstr "फाइल सिस्टम क्षतिग्रस्त है"
 
 #: src/GParted_Core.cc:1363
-msgid "The file system is unknown to GParted"
-msgstr "फाइल सिस्टम GParted के लिए अज्ञात है"
+msgid "The file system is unknown to WParted"
+msgstr "फाइल सिस्टम WParted के लिए अज्ञात है"
 
 #: src/GParted_Core.cc:1365
 msgid "There is no file system available (unformatted)"
@@ -1747,8 +1747,8 @@ msgid "_Devices"
 msgstr "उपकरण (_D)"
 
 #: src/Win_GParted.cc:190
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:219
 msgid "_Edit"
@@ -1877,8 +1877,8 @@ msgstr[0] "%1 अभियान लंबित है"
 msgstr[1] "%1 अभियान लंबित है"
 
 #: src/Win_GParted.cc:1162
-msgid "Quit GParted?"
-msgstr "GParted छोड़ें?"
+msgid "Quit WParted?"
+msgstr "WParted छोड़ें?"
 
 #: src/Win_GParted.cc:1168
 msgid "%1 operation is currently pending."
@@ -1887,8 +1887,8 @@ msgstr[0] "%1 अभियान अभी लंबित है।"
 msgstr[1] "%1 अभियान अभी लंबित है।"
 
 #: src/Win_GParted.cc:1579
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1630
 msgid "Scanning all devices..."

@@ -1,8 +1,6 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart
+/* Copyright (C) 2004 Bart
  * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -53,6 +51,10 @@ Copyright (C) 2004 Bart
 #include "Utils.h"
 #include "VGDevice.h"
 #include "config.h"
+#if defined(_WIN32)
+#include "WinFsOps.h"
+#include "WinScan.h"
+#endif
 
 #include <string.h>
 #include <gdkmm/cursor.h>
@@ -75,6 +77,7 @@ Copyright (C) 2004 Bart
 #include <glibmm/miscutils.h>
 #include <glibmm/shell.h>
 #include <glibmm/main.h>
+#include <glibmm/markup.h>
 #include <sigc++/bind.h>
 #include <sigc++/signal.h>
 #include <vector>
@@ -1288,6 +1291,11 @@ void Win_WParted::set_valid_operations()
 		}
 	}
 
+#if defined(_WIN32)
+	dynamic_cast<Gtk::Label *>(partitionmenu_items[MENU_TOGGLE_FS_BUSY]->get_child())
+		->set_label( selected_filesystem.busy ? _("Remove _Drive Letter") : _("Assign _Drive Letter") );
+#endif
+
 	// LVM2 read-only support: a Volume Group's Logical Volumes are displayed but
 	// never modified.  Permit viewing information, and operations which don't make
 	// LVM changes.  Leave every other operation disabled (as initialised at the top
@@ -1402,10 +1410,12 @@ void Win_WParted::set_valid_operations()
 	}
 
 	// Only permit encryption open/close when available
+#if !defined(_WIN32)
 	if (selected_partition_ptr->status == STAT_REAL &&
 	    selected_partition_ptr->fstype == FS_LUKS   &&
 	    ! selected_filesystem.busy                    )
 		allow_toggle_crypt_busy_state( true );
+#endif
 
 	// Only permit file system mount/unmount and swapon/swapoff when available
 	if (selected_partition_ptr->status == STAT_REAL         &&
@@ -1417,11 +1427,13 @@ void Win_WParted::set_valid_operations()
 	// For now specifically allow activation of an exported VG, which LVM will fail
 	// with "Volume group "VGNAME" is exported", otherwise user won't know why the
 	// inactive PV can't be activated.
+#if !defined(_WIN32)
 	if (    selected_partition_ptr->status == STAT_REAL
 	     && selected_filesystem.fstype     == FS_LVM2_PV      // Active VGNAME from mount point
 	     && ( selected_filesystem.busy || selected_filesystem.get_mountpoints().size() > 0 )
 	   )
 		allow_toggle_fs_busy_state( true );
+#endif
 
 	// Allow partition naming on devices that support it
 	if (selected_partition_ptr->status == STAT_REAL               &&
@@ -1626,6 +1638,14 @@ void Win_WParted::set_valid_operations()
 // be mounted from.
 bool Win_WParted::toggle_fs_busy_state_supported(const Partition& filesystem_ptn)
 {
+#if defined(_WIN32)
+	// On Windows "mounting" means assigning a drive letter to a volume Windows
+	// has mounted, and "unmounting" removing its drive letters and folder mount
+	// points.  Not possible for volumes Windows itself depends on.
+	WinScan::VolumeState vol;
+	return WinScan::volume(filesystem_ptn.get_path().raw(), vol) &&
+	       vol.fs_mounted && ! vol.system && ! vol.paging;
+#endif
 	return filesystem_ptn.fstype != FS_LVM2_PV          &&
 	       filesystem_ptn.fstype != FS_LINUX_SWRAID     &&
 	       filesystem_ptn.fstype != FS_ATARAID          &&
@@ -2041,6 +2061,17 @@ void Win_WParted::show_help(const Glib::ustring & filename /* E.g., "gparted" */
 
 void Win_WParted::menu_help_contents()
 {
+#if defined(_WIN32)
+	Gtk::MessageDialog win_dialog(*this, _("WParted Manual"), false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_OK, true);
+	Glib::ustring win_msg = _("WParted works like GParted.  The GParted Manual applies, except for the "
+	                          "Windows differences described in the WParted README:");
+	win_msg += "\n\nhttps://gparted.org/display-doc.php?name=help-manual";
+	win_msg += "\nhttps://github.com/AA-EION/WParted#readme";
+	win_dialog.set_secondary_text(win_msg);
+	win_dialog.set_title(_("WParted Manual"));
+	win_dialog.run();
+	return;
+#endif
 #ifdef ENABLE_HELP_DOC
 	//GParted was built with help documentation
 	show_help("gparted", "");
@@ -2070,13 +2101,17 @@ void Win_WParted::menu_help_about()
 	Gtk::AboutDialog dialog ;
 	dialog .set_transient_for( *this ) ;
 
-	dialog.set_program_name(_("WParted"));
+	dialog.set_program_name("WParted");
 	dialog .set_logo_icon_name( "wparted" ) ;
 	dialog .set_version( VERSION ) ;
-	dialog .set_comments( _( "WParted — Native Windows Partition Editor (Forked from GParted)" ) ) ;
+	dialog .set_comments( _( "Windows Partition Editor\n"
+	                         "A Windows port of GParted, the GNOME Partition Editor" ) ) ;
 	dialog.set_copyright(  "Copyright © 2004-2006 Bart Hakvoort"
 	                     "\nCopyright © 2008-2026 Curtis Gedak"
-	                     "\nCopyright © 2011-2026 Mike Fleetwood");
+	                     "\nCopyright © 2011-2026 Mike Fleetwood"
+	                     "\nWindows port: Copyright © 2026 Juan E. Gallego T. (Issen Software Group)"
+	                     " and WParted contributors");
+	dialog.set_license_type(Gtk::LICENSE_GPL_2_0);
 
 	//authors
 	//Names listed in alphabetical order by LAST name.
@@ -2099,6 +2134,8 @@ void Win_WParted::menu_help_about()
 	strings .push_back( "Antoine Viallon <antoine.viallon@gmail.com>" );
 	strings .push_back( "Patrick Verner <sales@partedmagic.com>" );
 	strings. push_back( "Michael Zimmermann <sigmaepsilon92@gmail.com>" ) ;
+	// WParted Windows port
+	strings .push_back( "Juan E. Gallego T. (Issen Software Group) — WParted Windows port" ) ;
 	dialog .set_authors( strings ) ;
 	strings .clear() ;
 
@@ -2114,8 +2151,8 @@ void Win_WParted::menu_help_about()
 		dialog .set_translator_credits( str_credits ) ;
 
 
-	//the url is not clickable - should not invoke web browser as root
-	dialog.set_website_label( "https://gparted.org" );
+	//the url is not clickable - should not invoke web browser as root / Administrator
+	dialog.set_website_label( "https://github.com/AA-EION/WParted  (based on https://gparted.org)" );
 
 	dialog .run() ;
 }
@@ -3120,6 +3157,31 @@ void Win_WParted::toggle_fs_busy_state()
 	Glib::ustring pulse_msg;
 	Glib::ustring failure_msg;
 	const Partition & filesystem_ptn = selected_partition_ptr->get_filesystem_partition();
+#if defined(_WIN32)
+	(void)action;
+	{
+		bool removing = filesystem_ptn.busy;
+		if (! check_toggle_busy_allowed(removing
+		        ? _("The drive letter cannot be removed when there are operations pending for the partition.")
+		        : _("A drive letter cannot be assigned when there are operations pending for the partition.")))
+			return;
+		show_pulsebar(Glib::ustring::compose(removing ? _("Removing drive letter from %1")
+		                                              : _("Assigning a drive letter to %1"),
+		                                     filesystem_ptn.get_path()));
+		std::string error;
+		std::string mount_point;
+		bool ok = removing ? WinFsOps::unmount(filesystem_ptn, error)
+		                   : WinFsOps::mount(filesystem_ptn, mount_point, error);
+		hide_pulsebar();
+		if (! ok)
+			show_toggle_failure_dialog(Glib::ustring::compose(removing ? _("Could not remove the drive letter from %1")
+			                                                           : _("Could not assign a drive letter to %1"),
+			                                                  filesystem_ptn.get_path()),
+			                           "<i>" + Glib::Markup::escape_text(error) + "</i>");
+		menu_gparted_refresh_devices();
+		return;
+	}
+#endif
 	if (filesystem_ptn.fstype == FS_LINUX_SWAP && filesystem_ptn.busy)
 	{
 		action = SWAPOFF;

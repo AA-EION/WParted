@@ -66,8 +66,8 @@ msgstr "GParted 项目"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1838
 #: src/Win_GParted.cc:2070
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -596,8 +596,8 @@ msgid "Save Details"
 msgstr "保存细节"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "GParted 细节"
+msgid "WParted Details"
+msgstr "WParted 细节"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -838,8 +838,8 @@ msgid "Removed directory %1"
 msgstr "已移除目录 %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "GParted 缺陷"
+msgid "WParted Bug"
+msgstr "WParted 缺陷"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -907,8 +907,8 @@ msgid "The file system is damaged"
 msgstr "文件系统已损坏"
 
 #: src/GParted_Core.cc:1520
-msgid "The file system is unknown to GParted"
-msgstr "文件系统未知于 GParted"
+msgid "The file system is unknown to WParted"
+msgstr "文件系统未知于 WParted"
 
 #: src/GParted_Core.cc:1522
 msgid "There is no file system available (unformatted)"
@@ -1777,8 +1777,8 @@ msgid "_Devices"
 msgstr "设备(_D)"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:223
 msgid "_Edit"
@@ -1942,8 +1942,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "%1 项操作待处理"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "退出 GParted?"
+msgid "Quit WParted?"
+msgstr "退出 WParted?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -1951,8 +1951,8 @@ msgid_plural "%1 operations are currently pending."
 msgstr[0] "%1 项操作待处理。"
 
 #: src/Win_GParted.cc:1753
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1813
 msgid "Scanning all devices..."

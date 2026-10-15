@@ -67,8 +67,8 @@ msgstr "GParted-projektet"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1728
 #: src/Win_GParted.cc:1960
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -597,8 +597,8 @@ msgid "Save Details"
 msgstr "Gem detaljer"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "Detaljer for GParted"
+msgid "WParted Details"
+msgstr "Detaljer for WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -845,8 +845,8 @@ msgid "Removed directory %1"
 msgstr "Fjernede mappe %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "GParted-fejl"
+msgid "WParted Bug"
+msgstr "WParted-fejl"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -916,8 +916,8 @@ msgid "The file system is damaged"
 msgstr "Filsystemet er skadet"
 
 #: src/GParted_Core.cc:1517
-msgid "The file system is unknown to GParted"
-msgstr "GParted kender ikke filsystemet"
+msgid "The file system is unknown to WParted"
+msgstr "WParted kender ikke filsystemet"
 
 #: src/GParted_Core.cc:1519
 msgid "There is no file system available (unformatted)"
@@ -1822,8 +1822,8 @@ msgid "_Devices"
 msgstr "_Enheder"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:223
 msgid "_Edit"
@@ -1989,8 +1989,8 @@ msgstr[0] "%1 handling planlagt"
 msgstr[1] "%1 handlinger planlagt"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "Afslut GParted?"
+msgid "Quit WParted?"
+msgstr "Afslut WParted?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -1999,8 +1999,8 @@ msgstr[0] "%1 handling er i øjeblikket planlagt."
 msgstr[1] "%1 handlinger er i øjeblikket planlagt."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1703
 msgid "Scanning all devices..."

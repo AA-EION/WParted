@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart
+/* Copyright (C) 2004 Bart
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,194 +25,225 @@ Copyright (C) 2004 Bart
 #include <iostream>
 #include <stdlib.h>
 
-
 #if defined(_WIN32)
+#include "WinDevNames.h"
+#include "Device.h"
+#include "Utils.h"
+#include <gtkmm/icontheme.h>
+#include <memory>
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
-#include <shellapi.h>
-#include <io.h>
-
-static bool is_running_as_admin()
-{
-	BOOL is_admin = FALSE;
-	PSID admin_group = NULL;
-	SID_IDENTIFIER_AUTHORITY nt_auth = SECURITY_NT_AUTHORITY;
-	if (AllocateAndInitializeSid(&nt_auth, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS,
-	                             0, 0, 0, 0, 0, 0, &admin_group))
-	{
-		CheckTokenMembership(NULL, admin_group, &is_admin);
-		FreeSid(admin_group);
-	}
-	return is_admin != FALSE;
-}
-
-static bool is_launched_from_explorer()
-{
-	DWORD procList[2] = { 0 };
-	DWORD count = GetConsoleProcessList(procList, 2);
-	return count <= 1;
-}
-
-static std::wstring Utf8ToWide(const std::string& str)
-{
-	if (str.empty()) return std::wstring();
-	int size = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.length()), NULL, 0);
-	if (size <= 0) return std::wstring();
-	std::wstring out(size, 0);
-	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.length()), &out[0], size);
-	return out;
-}
-
-static bool elevate_self(int argc, char* argv[], bool launchedFromExplorer)
-{
-	wchar_t exePath[MAX_PATH];
-	if (!GetModuleFileNameW(NULL, exePath, MAX_PATH)) return false;
-
-	std::wstring params;
-	for (int i = 1; i < argc; ++i) {
-		if (i > 1) params += L" ";
-		std::wstring warg = Utf8ToWide(argv[i]);
-		bool needQuotes = warg.empty() || (warg.find(L' ') != std::wstring::npos) || (warg.find(L'\t') != std::wstring::npos);
-		if (needQuotes) params += L"\"";
-		for (wchar_t c : warg) {
-			if (c == L'"') params += L"\\\"";
-			else params += c;
-		}
-		if (needQuotes) params += L"\"";
-	}
-
-	SHELLEXECUTEINFOW sei = { sizeof(sei) };
-	sei.cbSize = sizeof(sei);
-	sei.lpVerb = L"runas";
-	sei.lpFile = exePath;
-	sei.lpParameters = params.empty() ? NULL : params.c_str();
-	sei.nShow = SW_SHOWNORMAL;
-	sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-
-	if (ShellExecuteExW(&sei)) {
-		if (launchedFromExplorer) {
-			if (sei.hProcess) CloseHandle(sei.hProcess);
-			exit(0);
-		} else {
-			if (sei.hProcess) {
-				WaitForSingleObject(sei.hProcess, INFINITE);
-				DWORD exitCode = 0;
-				GetExitCodeProcess(sei.hProcess, &exitCode);
-				CloseHandle(sei.hProcess);
-				exit(exitCode);
-			}
-			exit(0);
-		}
-		return true;
-	}
-	return false;
-}
+#include <cstdio>
 #else
 #include <unistd.h>
-static bool is_running_as_admin()
+#endif
+
+
+#if defined(_WIN32)
+// The executable manifest requires administrator rights, so Windows always starts
+// WParted elevated.  Check anyway: with UAC disabled a standard user would get an
+// unelevated process.
+static bool running_elevated()
 {
-	return getuid() == 0;
+	HANDLE token = nullptr;
+	if (! OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
+		return false;
+	TOKEN_ELEVATION elevation;
+	DWORD size = 0;
+	bool elevated = GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &size) &&
+	                elevation.TokenIsElevated;
+	CloseHandle(token);
+	return elevated;
+}
+
+
+// Show text output when started from a console (wparted --version).
+static void attach_parent_console()
+{
+	// Keep output already redirected to a file or pipe (e.g. in CI).
+	DWORD type = GetFileType(GetStdHandle(STD_OUTPUT_HANDLE));
+	if (type == FILE_TYPE_DISK || type == FILE_TYPE_PIPE)
+		return;
+	if (AttachConsole(ATTACH_PARENT_PROCESS))
+	{
+		FILE* f = nullptr;
+		freopen_s(&f, "CONOUT$", "w", stdout);
+		freopen_s(&f, "CONOUT$", "w", stderr);
+	}
+}
+
+
+static void print_partition(const WParted::Partition& p, const char* indent)
+{
+	std::cout << indent << p.get_path() << "  " << WParted::Utils::get_filesystem_string(p.fstype)
+	          << "  sectors " << p.sector_start << "-" << p.sector_end
+	          << (p.busy ? "  busy" : "");
+	for (const Glib::ustring& mp : p.get_mountpoints())
+		std::cout << "  [" << mp << "]";
+	if (! p.get_filesystem_label().empty())
+		std::cout << "  label=\"" << p.get_filesystem_label() << "\"";
+	for (const Glib::ustring& f : p.get_flags())
+		std::cout << "  flag:" << f;
+	std::cout << "\n";
+	for (const Glib::ustring& m : p.get_messages())
+		std::cout << indent << "    message: " << m << "\n";
+	for (unsigned int i = 0; i < p.logicals.size(); i++)
+		print_partition(p.logicals[i], "      ");
+}
+
+
+// --smoke-test: read only device scan report plus a short display of the main
+// window.  Used by CI on a real Windows machine to check the bundled GTK runtime
+// and the Windows disk layer on real disks.
+static int smoke_test()
+{
+	std::cout << WParted::WParted_Core::get_version_and_config_string() << std::endl;
+	Glib::RefPtr<Gtk::IconTheme> theme = Gtk::IconTheme::get_default();
+	bool icons_ok = theme->has_icon("wparted") && theme->has_icon("dialog-warning");
+	std::cout << "icon theme: wparted=" << theme->has_icon("wparted")
+	          << " dialog-warning=" << theme->has_icon("dialog-warning") << std::endl;
+
+	WParted::WParted_Core core;
+	core.set_user_devices(std::vector<Glib::ustring>());  // Probe all disks, as the GUI does
+	std::vector<std::unique_ptr<WParted::Device>> devices;
+	core.set_devices(devices);
+	for (const auto& d : devices)
+	{
+		std::cout << d->get_path() << "  " << d->model << "  " << d->length << " sectors of "
+		          << d->sector_size << " bytes  table=" << d->disktype
+		          << (d->readonly ? "  READ-ONLY" : "") << "\n";
+		for (unsigned int i = 0; i < d->partitions.size(); i++)
+			print_partition(d->partitions[i], "   ");
+	}
+	std::cout << devices.size() << " device(s)" << std::endl;
+
+	std::vector<Glib::ustring> none;
+	WParted::Win_WParted window(none);
+	Glib::signal_timeout().connect_seconds([&window]() -> bool
+	{
+		window.hide();
+		Gtk::Main::quit();
+		return false;
+	}, 15);
+	Gtk::Main::run(window);
+	std::cout << "main window shown and closed" << std::endl;
+	// Any Windows machine has at least its system disk.
+	return icons_ok && ! devices.empty() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 #endif
+
 
 int main( int argc, char *argv[] )
 {
 #if defined(_WIN32)
-	// Check if standard handles are already redirected (e.g. pipe or file)
-	HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	DWORD stdoutType = (hStdOut != NULL && hStdOut != INVALID_HANDLE_VALUE) ? GetFileType(hStdOut) : FILE_TYPE_UNKNOWN;
-	bool stdoutRedirected = (stdoutType == FILE_TYPE_DISK || stdoutType == FILE_TYPE_PIPE || stdoutType == FILE_TYPE_CHAR);
-	if (!stdoutRedirected) {
-		if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-			freopen("CONOUT$", "w", stdout);
-			freopen("CONOUT$", "w", stderr);
-			freopen("CONIN$", "r", stdin);
-		}
-	}
-	std::ios::sync_with_stdio(true);
-#endif
-
-	bool test_gui = false;
-	bool no_elevate = false;
-	std::vector<Glib::ustring> user_devices;
-
-	for (int i = 1; i < argc; ++i) {
-		std::string arg = argv[i];
-		if (arg == "--help" || arg == "-h" || arg == "/?" || arg == "-?") {
-			std::cout << "WParted 1.0.0 — Native Windows Partition Editor (GTKmm GUI)\n"
-			          << "Usage: wparted [DEVICE...] [OPTIONS]\n\n"
-			          << "Launches the graphical partition editor interface on Windows.\n"
-			          << "Optional arguments:\n"
-			          << "  DEVICE         Path to device to inspect, e.g. /dev/sda or \\\\.\\PhysicalDrive0\n"
-			          << "  --no-elevate   Do not prompt for UAC administrator elevation (read-only mode)\n"
-			          << "  --read-only    Launch GUI with standard user privileges in read-only mode\n"
-			          << "  --test-gui     Initialize GTKmm GUI and exit cleanly after rendering\n"
-			          << "  --help, -h     Show this help screen\n"
-			          << "  --version      Show version information\n" << std::flush;
-			return EXIT_SUCCESS;
-		}
-		if (arg == "--version" || arg == "-v") {
-			std::cout << "WParted 1.0.0 (GTKmm3 Native Windows Interface)\n" << std::flush;
-			return EXIT_SUCCESS;
-		}
-		if (arg == "--test-gui") {
-			test_gui = true;
-			no_elevate = true;
-		} else if (arg == "--no-elevate" || arg == "--read-only") {
-			no_elevate = true;
-		} else {
-			user_devices.push_back(arg);
-		}
-	}
-
-	// Dynamic elevation for non-admin invocations unless explicitly bypassed
-	if ( !no_elevate && !is_running_as_admin() )
+	bool smoke = false;
+	for (int i = 1; i < argc; i++)
 	{
-#if defined(_WIN32)
-		bool launchedFromExplorer = is_launched_from_explorer();
-		if (elevate_self(argc, argv, launchedFromExplorer)) {
+		Glib::ustring arg = argv[i];
+		if (arg == "--smoke-test")
+		{
+			attach_parent_console();
+			smoke = true;
+			continue;
+		}
+		if (arg == "--version" || arg == "--help" || arg == "-h" || arg == "/?")
+		{
+			attach_parent_console();
+			std::cout << "WParted " << VERSION << " - Windows Partition Editor\n"
+			          << "A Windows port of GParted, the GNOME Partition Editor.\n\n";
+			if (arg != "--version")
+				std::cout << "Usage: wparted [DEVICE...]\n\n"
+				          << "DEVICE   Show only these disks, e.g. /dev/sdb or \\\\.\\PhysicalDrive1\n";
+			std::cout << std::flush;
 			return EXIT_SUCCESS;
 		}
-		// If elevation is cancelled or unavailable, fall through to launching GUI in read-only mode
-#endif
 	}
+#endif
 
 	WParted::WParted_Core::mainthread = Glib::Thread::self();
 
 	Gtk::Main kit( argc, argv ) ;
 
 	// Match the wparted.desktop filename so Gtk finds and provides the localised name
-	// and correct icon
+	// and correct icon to the Wayland compositor.
 	Glib::set_prgname("wparted");
+	// Set WM_CLASS X Window property for correct naming on X11.
 	gdk_set_program_class( "WParted" ) ;
 
 	//i18n
+#if defined(_WIN32)
+	// Translations are installed relative to the executable: <prefix>\share\locale
+	{
+		gchar* prefix = g_win32_get_package_installation_directory_of_module(nullptr);
+		gchar* localedir = g_build_filename(prefix, "share", "locale", nullptr);
+		bindtextdomain( GETTEXT_PACKAGE, localedir ) ;
+		g_free(localedir);
+		g_free(prefix);
+	}
+#else
 	bindtextdomain( GETTEXT_PACKAGE, GNOMELOCALEDIR ) ;
+#endif
 	bind_textdomain_codeset( GETTEXT_PACKAGE, "UTF-8" ) ;
 	textdomain( GETTEXT_PACKAGE ) ;
 
 	// Display version and configuration info when starting for command line users.
 	std::cout << WParted::WParted_Core::get_version_and_config_string() << std::endl;
 
-	// Check privileges
-	if ( !is_running_as_admin() )
+	//check privileges
+#if defined(_WIN32)
+	if ( ! running_elevated() )
 	{
-		const Glib::ustring notice_msg(_("Notice: Running with standard user privileges (read-only mode)."));
-		std::cout << notice_msg << "\n"
-		          << _("Administrator privileges are required for modifying partition tables.") << std::endl;
+		const Glib::ustring error_msg(_("Administrator privileges are required for running WParted"));
+		std::cerr << error_msg << std::endl;
+
+		Gtk::MessageDialog dialog(error_msg, false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
+		dialog .set_secondary_text(
+				_("Since WParted is a powerful tool capable of destroying partition tables and vast amounts of data, it only runs as an elevated administrator.  Start it with \"Run as administrator\".") ) ;
+		dialog .run() ;
+		exit(EXIT_FAILURE);
+	}
+#else
+	if ( getuid() != 0 )
+	{
+		const Glib::ustring error_msg(_("Root privileges are required for running GParted"));
+		std::cerr << error_msg << std::endl;
+
+		Gtk::MessageDialog dialog(error_msg, false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
+		dialog .set_secondary_text(
+				_("Since GParted is a powerful tool capable of destroying partition tables and vast amounts of data, only root may run it.") ) ;
+
+		dialog .run() ;
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+#if defined(_WIN32)
+	if (smoke)
+		return smoke_test();
+#endif
+
+	//deal with arguments..
+	std::vector<Glib::ustring> user_devices;
+	for (int i = 1; i < argc; i++)
+	{
+#if defined(_WIN32)
+		// Accept both \\.\PhysicalDriveN and /dev/sdX, always use /dev/sdX inside.
+		int index = WParted::WinDevNames::disk_index(argv[i]);
+		if (index < 0)
+		{
+			std::cerr << "Ignoring unknown device name: " << argv[i] << std::endl;
+			continue;
+		}
+		user_devices.push_back(WParted::WinDevNames::disk_path(index));
+#else
+		user_devices.push_back(argv[i]);
+#endif
 	}
 
-	WParted::Win_WParted win_gparted( user_devices ) ; 
-
-	if (test_gui) {
-		Glib::signal_timeout().connect_seconds([&win_gparted]() -> bool {
-			win_gparted.hide();
-			Gtk::Main::quit();
-			return false;
-		}, 2);
-	}
-
-	Gtk::Main::run( win_gparted ) ;
+	WParted::Win_WParted win_wparted( user_devices ) ;
+	Gtk::Main::run( win_wparted ) ;
 
 	return EXIT_SUCCESS;
 }

@@ -61,8 +61,8 @@ msgstr "The GParted Project"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1728
 #: src/Win_GParted.cc:1960
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -593,8 +593,8 @@ msgid "Save Details"
 msgstr "Захаваць падрабязнасці"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "Падрабязнасці GParted"
+msgid "WParted Details"
+msgstr "Падрабязнасці WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -837,8 +837,8 @@ msgid "Removed directory %1"
 msgstr "Каталог %1 выдалены"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "Памылка GParted"
+msgid "WParted Bug"
+msgstr "Памылка WParted"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -908,8 +908,8 @@ msgid "The file system is damaged"
 msgstr "Файлавая сістэма пашкоджана"
 
 #: src/GParted_Core.cc:1517
-msgid "The file system is unknown to GParted"
-msgstr "GParted не ведае такой файлавай сістэмы"
+msgid "The file system is unknown to WParted"
+msgstr "WParted не ведае такой файлавай сістэмы"
 
 #: src/GParted_Core.cc:1519
 msgid "There is no file system available (unformatted)"
@@ -1803,8 +1803,8 @@ msgid "_Devices"
 msgstr "_Прылады"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:223
 msgid "_Edit"
@@ -1971,8 +1971,8 @@ msgstr[1] "%1 запланаваныя аперацыі"
 msgstr[2] "%1 запланаваных аперацый"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "Выйсці з GParted?"
+msgid "Quit WParted?"
+msgstr "Выйсці з WParted?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -1982,8 +1982,8 @@ msgstr[1] "Засталося %1 запланаваныя аперацыі."
 msgstr[2] "Засталося %1 запланаваных аперацый."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
-msgstr "%1 — GParted"
+msgid "%1 - WParted"
+msgstr "%1 — WParted"
 
 #: src/Win_GParted.cc:1703
 msgid "Scanning all devices..."

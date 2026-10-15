@@ -66,7 +66,7 @@ msgstr "Пројекат Гпартеда"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1728
 #: src/Win_GParted.cc:1960
-msgid "GParted"
+msgid "WParted"
 msgstr "Гпартед"
 
 #: gparted.desktop.in.in:3
@@ -598,7 +598,7 @@ msgid "Save Details"
 msgstr "Сачувај детаље"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
+msgid "WParted Details"
 msgstr "Детаљи Гпартеда"
 
 #. Device overview information
@@ -841,7 +841,7 @@ msgid "Removed directory %1"
 msgstr "Уклонио сам директоријум %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
+msgid "WParted Bug"
 msgstr "Грешка Гпартеда"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
@@ -912,7 +912,7 @@ msgid "The file system is damaged"
 msgstr "Систем датотека је оштећен"
 
 #: src/GParted_Core.cc:1517
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "Систем датотека није познат Гпартеду"
 
 #: src/GParted_Core.cc:1519
@@ -1810,7 +1810,7 @@ msgid "_Devices"
 msgstr "У_ређаји"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
+msgid "_WParted"
 msgstr "_Гпартед"
 
 #: src/Win_GParted.cc:223
@@ -1978,7 +1978,7 @@ msgstr[2] "%1 заказаних операција"
 msgstr[3] "Једна заказана операција"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "Да затворим Гпартед?"
 
 #: src/Win_GParted.cc:1207
@@ -1990,7 +1990,7 @@ msgstr[2] "%1 операција је тренутно заказано."
 msgstr[3] "Једна операција је тренутно заказана."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr "%1 — Гпартед"
 
 #: src/Win_GParted.cc:1703

@@ -47,8 +47,8 @@ msgstr "The GParted Project"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1728
 #: src/Win_GParted.cc:1960
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -574,7 +574,7 @@ msgid "Save Details"
 msgstr ""
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
+msgid "WParted Details"
 msgstr ""
 
 #. Device overview information
@@ -814,7 +814,7 @@ msgid "Removed directory %1"
 msgstr "Removed directory %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
+msgid "WParted Bug"
 msgstr ""
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
@@ -884,7 +884,7 @@ msgid "The file system is damaged"
 msgstr ""
 
 #: src/GParted_Core.cc:1517
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr ""
 
 #: src/GParted_Core.cc:1519
@@ -1730,8 +1730,8 @@ msgid "_Devices"
 msgstr ""
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:223
 msgid "_Edit"
@@ -1896,7 +1896,7 @@ msgstr[0] "%1 operation pending"
 msgstr[1] "%1 operations pending"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr ""
 
 #: src/Win_GParted.cc:1207
@@ -1906,8 +1906,8 @@ msgstr[0] "%1 operation is currently pending."
 msgstr[1] "%1 operations are currently pending."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1703
 msgid "Scanning all devices..."

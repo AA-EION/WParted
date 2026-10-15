@@ -68,8 +68,8 @@ msgstr ""
 #. ==== GUI =========================
 #: ../gparted.desktop.in.in.h:1 ../src/Win_GParted.cc:88
 #: ../src/Win_GParted.cc:1635 ../src/Win_GParted.cc:1863
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -564,7 +564,7 @@ msgid "Save Details"
 msgstr "ਵੇਰਵਾ ਸੰਭਾਲੋ"
 
 #: ../src/Dialog_Progress.cc:386
-msgid "GParted Details"
+msgid "WParted Details"
 msgstr "ਜੀਪਾਰਟਡ ਵੇਰਵਾ"
 
 #. Device overview information
@@ -934,8 +934,8 @@ msgstr "%1 ਡਾਇਰੈਕਟਰੀ ਹਟਾਈ"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: ../src/GParted_Core.cc:64 ../src/OperationDetail.cc:146
-msgid "GParted Bug"
-msgstr "GParted ਬੱਗ"
+msgid "WParted Bug"
+msgstr "WParted ਬੱਗ"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: ../src/GParted_Core.cc:176 ../src/GParted_Core.cc:185
@@ -993,7 +993,7 @@ msgid "The file system is damaged"
 msgstr "ਫਾਇਲ ਸਿਸਟਮ ਨਿਕਾਰਾ ਹੈ"
 
 #: ../src/GParted_Core.cc:1363
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "ਫਾਇਲ ਸਿਸਟਮ ਜੀ-ਪਾਰਟਡ ਲਈ ਅਣਜਾਣ ਹੈ"
 
 #: ../src/GParted_Core.cc:1365
@@ -1877,7 +1877,7 @@ msgid "_Devices"
 msgstr "ਡਿਵਾਈਸ(_D)"
 
 #: ../src/Win_GParted.cc:189
-msgid "_GParted"
+msgid "_WParted"
 msgstr "ਜੀਪਾਰਟਡ(_G)"
 
 #: ../src/Win_GParted.cc:218
@@ -2011,7 +2011,7 @@ msgstr[0] "%1 ਓਪਰੇਸ਼ਨ ਅਜੇ ਬਾਕੀ ਹੈ"
 msgstr[1] "%1 ਓਪਰੇਸ਼ਨ ਅਜੇ ਬਾਕੀ ਹਨ"
 
 #: ../src/Win_GParted.cc:1148
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "ਜੀਪਾਰਟਡ ਬੰਦ ਕਰਨਾ ਹੈ?"
 
 #: ../src/Win_GParted.cc:1154
@@ -2021,8 +2021,8 @@ msgstr[0] "%1 ਓਪਰੇਸ਼ਨ ਇਸ ਸਮੇਂ ਬਾਕੀ ਹੈ।"
 msgstr[1] "%1 ਓਪਰੇਸ਼ਨ ਇਸ ਸਮੇਂ ਬਾਕੀ ਹਨ।"
 
 #: ../src/Win_GParted.cc:1560
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1611
 msgid "Scanning all devices..."

@@ -74,8 +74,8 @@ msgstr "Проект GParted"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1724
 #: src/Win_GParted.cc:1956
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -607,8 +607,8 @@ msgid "Save Details"
 msgstr "Сохранить подробности"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "Подробности GParted"
+msgid "WParted Details"
+msgstr "Подробности WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -850,8 +850,8 @@ msgid "Removed directory %1"
 msgstr "Удалён каталог %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "Ошибка GParted"
+msgid "WParted Bug"
+msgstr "Ошибка WParted"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:193 src/GParted_Core.cc:202
@@ -916,8 +916,8 @@ msgid "The file system is damaged"
 msgstr "Файловая система повреждена"
 
 #: src/GParted_Core.cc:1521
-msgid "The file system is unknown to GParted"
-msgstr "Файловая система неизвестна GParted"
+msgid "The file system is unknown to WParted"
+msgstr "Файловая система неизвестна WParted"
 
 #: src/GParted_Core.cc:1523
 msgid "There is no file system available (unformatted)"
@@ -1817,7 +1817,7 @@ msgstr "_Устройства"
 
 # это главное меню, тут должно быть по стандарту "Файл"
 #: src/Win_GParted.cc:194
-msgid "_GParted"
+msgid "_WParted"
 msgstr "_Файл"
 
 #: src/Win_GParted.cc:223
@@ -1985,8 +1985,8 @@ msgstr[1] "%1 запланированные операции"
 msgstr[2] "%1 запланированных операций"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "Выйти из GParted?"
+msgid "Quit WParted?"
+msgstr "Выйти из WParted?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -1996,8 +1996,8 @@ msgstr[1] "Осталось %1 запланированные операции."
 msgstr[2] "Осталось %1 запланированных операций."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
-msgstr "%1 — GParted"
+msgid "%1 - WParted"
+msgstr "%1 — WParted"
 
 #: src/Win_GParted.cc:1699
 msgid "Scanning all devices..."

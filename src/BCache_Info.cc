@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2022 Mike Fleetwood
+/* Copyright (C) 2022 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,6 +43,10 @@ Glib::ustring BCache_Info::get_bcache_device(const Glib::ustring& device_path, c
 {
 	Glib::ustring sysfs_path = get_sysfs_bcache_path(device_path, partition_path) + "/dev";
 
+#if defined(_WIN32)
+	(void)sysfs_path;
+	return Glib::ustring("");  // No Linux bcache on Windows
+#else
 	char buf[128];  // Large enough for link target
 	                // "../../../../../../../../../../virtual/block/bcache0".
 	ssize_t len = readlink(sysfs_path.c_str(), buf, sizeof(buf)-1);
@@ -53,6 +55,7 @@ Glib::ustring BCache_Info::get_bcache_device(const Glib::ustring& device_path, c
 	buf[len] = '\0';
 
 	return "/dev/" + Glib::ustring(basename(buf));
+#endif
 }
 
 

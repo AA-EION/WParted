@@ -27,8 +27,8 @@ msgid "Create, reorganize, and delete partitions"
 msgstr "Partitsioonide loomine, muutmine ja kustutamine"
 
 #. ==== GUI =========================
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 msgid "GParted Partition Editor"
 msgstr "GParted partitsioonihaldur"
@@ -282,8 +282,8 @@ msgstr "Katkesta operatsioon"
 msgid "Save Details"
 msgstr "Üksikasjade salvestamine"
 
-msgid "GParted Details"
-msgstr "GParted-i üksikasjad"
+msgid "WParted Details"
+msgstr "WParted-i üksikasjad"
 
 msgid "Libparted"
 msgstr "Libparted"
@@ -460,8 +460,8 @@ msgstr "Failisüsteemi pole võimalik tuvastada! Võimalikud põhjused:"
 msgid "The file system is damaged"
 msgstr "Failisüsteemi on vigastatud"
 
-msgid "The file system is unknown to GParted"
-msgstr "See failisüsteem on GPartedi jaoks tundmatu"
+msgid "The file system is unknown to WParted"
+msgstr "See failisüsteem on WPartedi jaoks tundmatu"
 
 msgid "There is no file system available (unformatted)"
 msgstr "Failisüsteemi ei ole (vormindamata)"
@@ -917,8 +917,8 @@ msgstr "_Uuenda seadmeid"
 msgid "_Devices"
 msgstr "_Seadmed"
 
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 msgid "_Edit"
 msgstr "_Redaktor"
@@ -1035,8 +1035,8 @@ msgid_plural "%1 operations pending"
 msgstr[0] "%1 operatsioon ootel"
 msgstr[1] "%1 operatsiooni ootel"
 
-msgid "Quit GParted?"
-msgstr "Kas sulgeda GParted?"
+msgid "Quit WParted?"
+msgstr "Kas sulgeda WParted?"
 
 msgid "%1 operation is currently pending."
 msgid_plural "%1 operations are currently pending."
@@ -1052,8 +1052,8 @@ msgstr "_Saaleala välja"
 msgid "_Swapon"
 msgstr "_Saaleala kasutusele"
 
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 msgid "Scanning all devices..."
 msgstr "Kõigi seadmete skaneerimine..."

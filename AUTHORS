@@ -6,6 +6,10 @@ Portions Copyright (C) 2008-2026
 Portions Copyright (C) 2011-2026
 	Mike Fleetwood
 
+WParted, the Windows port of GParted
+Portions Copyright (C) 2026
+	Juan E. Gallego T. (Issen Software Group)
+
 This file may be modified and/or distributed without restriction.  This is
 not an invitation to misrepresent who contributed to GParted.
 
@@ -69,6 +73,11 @@ Jérôme Dumesnil		<jerome.dumesnil@gmail.com>
 Joan Lledó			<joanlluislledo@gmail.com>
 	* Created Dialog_Rescue_Data.h, Dialog_Rescue_Data.cc to attempt data rescue.
 	* Wrote patch to add attempt data rescue for lost partitions.
+
+Juan E. Gallego T.	(Issen Software Group)
+	* Ported GParted to Windows as WParted: Windows partition table
+	  back end for the libparted interface, Windows volume and file system
+	  operations, build, packaging and tests.
 
 Luca Bacci		<luca.bacci982@gmail.com>
 	* Created OptionComboBox.h, OptionComboBox.cc.

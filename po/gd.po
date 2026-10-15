@@ -53,8 +53,8 @@ msgstr ""
 #: ../gparted.desktop.in.in.h:1 ../src/Dialog_Progress.cc:371
 #: ../src/Win_GParted.cc:79 ../src/Win_GParted.cc:1423
 #: ../src/Win_GParted.cc:1618
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -543,8 +543,8 @@ msgid "Save Details"
 msgstr "Sàbhail am mion-fhiosrachadh"
 
 #: ../src/Dialog_Progress.cc:368
-msgid "GParted Details"
-msgstr "Mion-fhiosrachadh GParted"
+msgid "WParted Details"
+msgstr "Mion-fhiosrachadh WParted"
 
 #: ../src/Dialog_Progress.cc:379
 msgid "Libparted"
@@ -897,8 +897,8 @@ msgid "The file system is damaged"
 msgstr "Tha dochann air an t-siostam-fhaidhlichean"
 
 #: ../src/GParted_Core.cc:1712
-msgid "The file system is unknown to GParted"
-msgstr "Chan aithne do GParted air an t-siostam-fhaidhlichean"
+msgid "The file system is unknown to WParted"
+msgstr "Chan aithne do WParted air an t-siostam-fhaidhlichean"
 
 #: ../src/GParted_Core.cc:1714
 msgid "There is no file system available (unformatted)"
@@ -1609,8 +1609,8 @@ msgid "_Devices"
 msgstr "Ui_dheaman"
 
 #: ../src/Win_GParted.cc:167
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:187
 msgid "_Edit"
@@ -1778,8 +1778,8 @@ msgstr[2] "%1 obrachadh ri an dèiligeadh"
 msgstr[3] "%1 obrachadh ri dhèiligeadh"
 
 #: ../src/Win_GParted.cc:1036
-msgid "Quit GParted?"
-msgstr "A bheil thu airson GParted fhàgail?"
+msgid "Quit WParted?"
+msgstr "A bheil thu airson WParted fhàgail?"
 
 #: ../src/Win_GParted.cc:1042
 msgid "%1 operation is currently pending."
@@ -1790,8 +1790,8 @@ msgstr[2] "Tha %1 obrachaidhean ri an dèiligeadh an-dràsta."
 msgstr[3] "Tha %1 obrachadh ri dhèiligeadh an-dràsta."
 
 #: ../src/Win_GParted.cc:1362
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1399
 msgid "Scanning all devices..."

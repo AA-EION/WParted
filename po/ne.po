@@ -29,7 +29,7 @@ msgstr "जिनोम विभाजन सम्पादक"
 #. ==== GUI =========================
 #: ../gparted.desktop.in.h:2 ../src/Win_GParted.cc:66
 #: ../src/Win_GParted.cc:1011 ../src/Win_GParted.cc:1132
-msgid "GParted"
+msgid "WParted"
 msgstr "जिपार्टेड"
 
 #: ../src/Dialog_Base_Partition.cc:56
@@ -848,7 +848,7 @@ msgid "_Show Features"
 msgstr "विशेषता देखाउनुहोस्"
 
 #: ../src/Win_GParted.cc:147
-msgid "_GParted"
+msgid "_WParted"
 msgstr "जिपार्टेड"
 
 #: ../src/Win_GParted.cc:166
@@ -977,7 +977,7 @@ msgid "1 operation pending"
 msgstr "१ सञ्चालन विचाराधीन छ"
 
 #: ../src/Win_GParted.cc:713
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr "जिपार्टेड अन्त्य गर्नुहुन्छ ?"
 
 #: ../src/Win_GParted.cc:720
@@ -1001,7 +1001,7 @@ msgid "_Swapon"
 msgstr "साटासाट खोल्नुहोस्"
 
 #: ../src/Win_GParted.cc:921
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr "%1 - जिपार्टेड"
 
 #: ../src/Win_GParted.cc:967

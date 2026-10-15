@@ -26,7 +26,7 @@ msgstr ""
 
 #. ==== GUI =========================
 #: gparted.desktop.in.h:1 src/Dialog_About.cc:32 src/Win_GParted.cc:33
-msgid "GParted"
+msgid "WParted"
 msgstr ""
 
 #: gparted.desktop.in.h:2 src/Dialog_About.cc:33
@@ -592,7 +592,7 @@ msgid "_Refresh devices"
 msgstr ""
 
 #: src/Win_GParted.cc:91
-msgid "_GParted"
+msgid "_WParted"
 msgstr ""
 
 #. title
@@ -733,7 +733,7 @@ msgid "1 operation pending"
 msgstr "1."
 
 #: src/Win_GParted.cc:538
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr ""
 
 #: src/Win_GParted.cc:541

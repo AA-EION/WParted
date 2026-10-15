@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2015 Mike Fleetwood
+/* Copyright (C) 2015 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -65,6 +63,9 @@ void LUKS_Info::initialise_if_required()
 void LUKS_Info::load_cache()
 {
 	luks_mapping_cache.clear();
+#if defined(_WIN32)
+	return;  // No Linux dm-crypt on Windows: LUKS is detected but never open.
+#endif
 
 	Glib::ustring output;
 	Glib::ustring error;

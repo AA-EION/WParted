@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2016 Mike Fleetwood
+/* Copyright (C) 2016 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +27,7 @@ Copyright (C) 2016 Mike Fleetwood
 #include <limits.h>
 #include <stdlib.h>
 #if defined(_WIN32)
-#include "Win32StorageEngine.h"
+#include "WinScan.h"
 #else
 #include <mntent.h>
 #endif
@@ -65,21 +63,30 @@ void Mount_Info::load_cache()
 	fstab_info.clear();
 
 #if defined(_WIN32)
-	auto drives = Win32StorageEngine::Instance().EnumerateDisks();
-	for (const auto& d : drives) {
-		for (const auto& p : d.partitions) {
-			if (!p.driveLetter.empty()) {
-				std::string mnt;
-				for (wchar_t wc : p.driveLetter) {
-					if (wc >= 32 && wc <= 126) mnt += static_cast<char>(wc);
-				}
-				if (!mnt.empty()) {
-					MountEntry entry;
-					entry.readonly = false;
-					entry.mountpoints.push_back(mnt);
-					mount_info[BlockSpecial(p.linuxDevPath)] = entry;
-				}
-			}
+	// Windows: a partition is "mounted" (busy) when its volume has a drive letter or
+	// folder mount point, or when Windows itself depends on it.  The latter have no
+	// mount point so a bracketed description is shown instead.  There is no fstab.
+	// WinScan::load() was called by Proc_Partitions_Info::load_cache() earlier in the
+	// same device scan.
+	for (const std::string& dev : WinScan::device_paths())
+	{
+		std::vector<std::string> paths = WinScan::partition_paths(dev);
+		paths.push_back(dev);  // Whole disk volume without partition table
+		for (const std::string& path : paths)
+		{
+			WinScan::VolumeState vol;
+			if (! WinScan::volume(path, vol))
+				continue;
+			MountEntry entry;
+			entry.readonly = vol.read_only;
+			for (const std::string& mp : vol.mount_points)
+				entry.mountpoints.push_back(mp);
+			if (entry.mountpoints.empty() && vol.system)
+				entry.mountpoints.push_back("[Windows boot]");
+			if (entry.mountpoints.empty() && vol.paging)
+				entry.mountpoints.push_back("[Windows paging file]");
+			if (! entry.mountpoints.empty())
+				mount_info[BlockSpecial(path)] = entry;
 		}
 	}
 #else

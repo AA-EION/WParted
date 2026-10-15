@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2010 Curtis Gedak
+/* Copyright (C) 2010 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +20,7 @@ Copyright (C) 2010 Curtis Gedak
 #include "Utils.h"
 
 #if defined(_WIN32)
-#include "Win32StorageEngine.h"
+#include "WinScan.h"
 #endif
 
 #include <glibmm/ustring.h>
@@ -98,15 +96,17 @@ void Proc_Partitions_Info::load_proc_partitions_info_cache()
 	device_paths_cache.clear();
 
 #if defined(_WIN32)
-	auto drives = Win32StorageEngine::Instance().EnumerateDisks();
-	for (const auto& d : drives) {
-		device_paths_cache.push_back(d.linuxDevPath);
-		BlockSpecial::register_block_special(d.linuxDevPath, 8 + d.diskIndex, 0);
-		all_entries_cache.push_back(BlockSpecial(d.linuxDevPath));
-		for (const auto& p : d.partitions) {
-			BlockSpecial::register_block_special(p.linuxDevPath, 8 + d.diskIndex, p.partitionNumber);
-			all_entries_cache.push_back(BlockSpecial(p.linuxDevPath));
-		}
+	// Windows: no /proc/partitions.  Take a snapshot of all disks, their partitions
+	// and volumes.  Entries are ordered as in /proc/partitions: each whole disk
+	// followed by its partitions.  Names are compared by name (no major/minor
+	// numbers on Windows).
+	WinScan::load();
+	for (const std::string& dev : WinScan::device_paths())
+	{
+		device_paths_cache.push_back(dev);
+		all_entries_cache.push_back(BlockSpecial(dev));
+		for (const std::string& ptn : WinScan::partition_paths(dev))
+			all_entries_cache.push_back(BlockSpecial(ptn));
 	}
 #else
 	std::ifstream proc_partitions( "/proc/partitions" ) ;

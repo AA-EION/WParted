@@ -28,8 +28,8 @@ msgstr "GNOME තැටි කොටස් කිරීම"
 #. ==== GUI =========================
 #: ../gparted.desktop.in.h:2 ../src/Win_GParted.cc:66
 #: ../src/Win_GParted.cc:1011 ../src/Win_GParted.cc:1132
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../src/Dialog_Base_Partition.cc:56
 msgid "Free Space Preceding (MiB):"
@@ -843,7 +843,7 @@ msgid "_Show Features"
 msgstr "උපක්‍රමය "
 
 #: ../src/Win_GParted.cc:147
-msgid "_GParted"
+msgid "_WParted"
 msgstr ""
 
 #: ../src/Win_GParted.cc:166
@@ -972,7 +972,7 @@ msgid "1 operation pending"
 msgstr "එක් ක්‍රියාකාරකමක් විසදීමට ඇත ක්‍රියාකාරකම් වලින් 1%ක් විසදීමට ඇත "
 
 #: ../src/Win_GParted.cc:713
-msgid "Quit GParted?"
+msgid "Quit WParted?"
 msgstr ""
 
 #: ../src/Win_GParted.cc:720
@@ -996,7 +996,7 @@ msgid "_Swapon"
 msgstr ""
 
 #: ../src/Win_GParted.cc:921
-msgid "%1 - GParted"
+msgid "%1 - WParted"
 msgstr ""
 
 #: ../src/Win_GParted.cc:967

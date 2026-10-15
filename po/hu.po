@@ -64,8 +64,8 @@ msgstr "A GParted projekt"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1728
 #: src/Win_GParted.cc:1960
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -598,8 +598,8 @@ msgid "Save Details"
 msgstr "Részletek mentése"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "A GParted részletei"
+msgid "WParted Details"
+msgstr "A WParted részletei"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -841,8 +841,8 @@ msgid "Removed directory %1"
 msgstr "%1 könyvtár törölve"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "GParted hiba"
+msgid "WParted Bug"
+msgstr "WParted hiba"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -914,8 +914,8 @@ msgid "The file system is damaged"
 msgstr "A fájlrendszer sérült"
 
 #: src/GParted_Core.cc:1517
-msgid "The file system is unknown to GParted"
-msgstr "A fájlrendszer ismeretlen a GParted előtt"
+msgid "The file system is unknown to WParted"
+msgstr "A fájlrendszer ismeretlen a WParted előtt"
 
 #: src/GParted_Core.cc:1519
 msgid "There is no file system available (unformatted)"
@@ -1815,8 +1815,8 @@ msgid "_Devices"
 msgstr "_Eszközök"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:223
 msgid "_Edit"
@@ -1988,8 +1988,8 @@ msgstr[0] "%1 művelet függőben"
 msgstr[1] "%1 művelet függőben"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "Kilép a GPartedből?"
+msgid "Quit WParted?"
+msgstr "Kilép a WPartedből?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -1998,8 +1998,8 @@ msgstr[0] "Jelenleg 1 művelet van függőben."
 msgstr[1] "Jelenleg 1 művelet van függőben."
 
 #: src/Win_GParted.cc:1643
-msgid "%1 - GParted"
-msgstr "%1 – GParted"
+msgid "%1 - WParted"
+msgstr "%1 – WParted"
 
 #: src/Win_GParted.cc:1703
 msgid "Scanning all devices..."

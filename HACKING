@@ -1,3 +1,24 @@
+WParted, the Windows port
+=========================
+
+WParted keeps the GParted sources as close to upstream as possible.
+Windows specific code lives in the Win*.cc files and in
+PartedWin32Bridge.cc, which implements the subset of the libparted API
+GParted uses on top of the Windows partition manager.  Changes to the
+GParted sources are marked with #if defined(_WIN32).
+
+Anything that writes to a disk must go through the DiskBackend
+interface (include/WinDiskBackend.h) so that the safety checks apply:
+the disk identity check, the partition table snapshot comparison,
+verification after writing, and volume locking.  Never run external
+programs: Utils::execute_command() is disabled on Windows on purpose.
+
+Build and test instructions are in README.md.  Run the unit tests
+(they also run on Linux) before sending changes, and the virtual disk
+integration tests for anything touching the Windows back end.
+
+
+
 git guidelines for gparted
 ==========================
 
@@ -42,6 +63,4 @@ Translatable files
 The file po/POTFILES.in lists all source files which do or could contain
 translatable strings.  Remember to update when adding new and removing
 old source code files include/*.h and src/*.cc.  Generally .cc files are
-included and .h files are not, but there are exceptions.  Some mistakes
-can be detected using:
-    make distcheck
+included and .h files are not, but there are exceptions.

@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart 'plors' Hakvoort
+/* Copyright (C) 2004 Bart 'plors' Hakvoort
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -110,7 +108,7 @@ static void cancel_command(bool force, Glib::Pid pid, bool cancel_safe)
 #ifndef _WIN32
 		kill(-pid, SIGINT);
 #else
-		TerminateProcess(pid, 1);
+		(void)pid;  // No child processes are ever started on Windows
 #endif
 	}
 }
@@ -245,7 +243,7 @@ void OperationDetail::add_child( const OperationDetail & operationdetail )
 	// when dealing with the parent.
 
 	if (this->m_no_more_children)
-		std::cerr << "GParted Bug: Adding child operation detail when m_no_more_children is true" << std::endl;
+		std::cerr << "WParted Bug: Adding child operation detail when m_no_more_children is true" << std::endl;
 		// But carry on regardless.
 
 	// Create new default constructed OperationDetail object and attach as child of
@@ -443,6 +441,18 @@ int OperationDetail::execute_command_internal(const Glib::ustring& command, cons
 {
 	add_child(OperationDetail(command, STATUS_EXECUTE, FONT_BOLD_ITALIC));
 	OperationDetail& cmd_operationdetail = get_last_child();
+#if defined(_WIN32)
+	// SAFETY: never run Linux file system tools on Windows.  See
+	// Utils::execute_command().
+	(void)input;
+	(void)flags;
+	(void)stream_progress_slot;
+	(void)timed_progress_slot;
+	cmd_operationdetail.add_child(OperationDetail(
+	        _("WParted does not run external commands on Windows.  This operation is not supported."),
+	        STATUS_ERROR, FONT_ITALIC));
+	return 127;
+#endif
 	Glib::Pid pid;
 	int in = -1;
 	// set up pipes for capture

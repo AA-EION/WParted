@@ -58,8 +58,8 @@ msgstr "מיזם GParted"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:3 src/Win_GParted.cc:89 src/Win_GParted.cc:1654
 #: src/Win_GParted.cc:1883
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:4
 msgid "Partition Editor"
@@ -553,8 +553,8 @@ msgid "Save Details"
 msgstr "שמירת פרטים"
 
 #: src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "פרטי GParted"
+msgid "WParted Details"
+msgstr "פרטי WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:427
@@ -805,8 +805,8 @@ msgstr "הוסרה התיקייה %1"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: src/GParted_Core.cc:67 src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "תקלה ב־GParted"
+msgid "WParted Bug"
+msgstr "תקלה ב־WParted"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:178 src/GParted_Core.cc:187
@@ -863,8 +863,8 @@ msgid "The file system is damaged"
 msgstr "מערכת הקבצים פגומה"
 
 #: src/GParted_Core.cc:1341
-msgid "The file system is unknown to GParted"
-msgstr "מערכת הקבצים לא מוכרת ל־GParted"
+msgid "The file system is unknown to WParted"
+msgstr "מערכת הקבצים לא מוכרת ל־WParted"
 
 #: src/GParted_Core.cc:1343
 msgid "There is no file system available (unformatted)"
@@ -1703,8 +1703,8 @@ msgid "_Devices"
 msgstr "ה_תקנים"
 
 #: src/Win_GParted.cc:190
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:219
 msgid "_Edit"
@@ -1835,8 +1835,8 @@ msgstr[2] "%1 פעולות ממתינות"
 msgstr[3] "%1 פעולות ממתינות"
 
 #: src/Win_GParted.cc:1162
-msgid "Quit GParted?"
-msgstr "לצאת מ־GParted?"
+msgid "Quit WParted?"
+msgstr "לצאת מ־WParted?"
 
 #: src/Win_GParted.cc:1168
 msgid "%1 operation is currently pending."
@@ -1847,8 +1847,8 @@ msgstr[2] "%1 פעולות ממתינות כעת."
 msgstr[3] "%1 פעולות ממתינות כעת."
 
 #: src/Win_GParted.cc:1579
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1630
 msgid "Scanning all devices..."

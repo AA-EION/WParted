@@ -65,8 +65,8 @@ msgstr "Проєкт GParted"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:2 src/Win_GParted.cc:91 src/Win_GParted.cc:1838
 #: src/Win_GParted.cc:2070
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:3
 msgid "Partition Editor"
@@ -601,8 +601,8 @@ msgid "Save Details"
 msgstr "Зберегти подробиці"
 
 #: src/Dialog_Progress.cc:421
-msgid "GParted Details"
-msgstr "Подробиці GParted"
+msgid "WParted Details"
+msgstr "Подробиці WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:462
@@ -844,8 +844,8 @@ msgid "Removed directory %1"
 msgstr "Вилучений каталог %1"
 
 #: src/GParted_Core.cc:77
-msgid "GParted Bug"
-msgstr "Вада у GParted"
+msgid "WParted Bug"
+msgstr "Вада у WParted"
 
 #. TO TRANSLATORS: looks like   Scanning /dev/sda
 #: src/GParted_Core.cc:185 src/GParted_Core.cc:196
@@ -915,8 +915,8 @@ msgid "The file system is damaged"
 msgstr "Файлова система зіпсована"
 
 #: src/GParted_Core.cc:1520
-msgid "The file system is unknown to GParted"
-msgstr "Файлова система невідома GParted"
+msgid "The file system is unknown to WParted"
+msgstr "Файлова система невідома WParted"
 
 #: src/GParted_Core.cc:1522
 msgid "There is no file system available (unformatted)"
@@ -1834,7 +1834,7 @@ msgid "_Devices"
 msgstr "_Пристрої"
 
 #: src/Win_GParted.cc:194
-msgid "_GParted"
+msgid "_WParted"
 msgstr "_Файл"
 
 #: src/Win_GParted.cc:223
@@ -2001,8 +2001,8 @@ msgstr[1] "%1 операції у черзі"
 msgstr[2] "%1 операцій у черзі"
 
 #: src/Win_GParted.cc:1201
-msgid "Quit GParted?"
-msgstr "Вийти з GParted?"
+msgid "Quit WParted?"
+msgstr "Вийти з WParted?"
 
 #: src/Win_GParted.cc:1207
 msgid "%1 operation is currently pending."
@@ -2012,8 +2012,8 @@ msgstr[1] "%1 операції зараз у черзі"
 msgstr[2] "%1 операцій зараз у черзі"
 
 #: src/Win_GParted.cc:1753
-msgid "%1 - GParted"
-msgstr "%1 — GParted"
+msgid "%1 - WParted"
+msgstr "%1 — WParted"
 
 #: src/Win_GParted.cc:1813
 msgid "Scanning all devices..."

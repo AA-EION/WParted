@@ -53,8 +53,8 @@ msgstr "Li projecte GParted"
 #. ==== GUI =========================
 #: gparted.desktop.in.in:3 src/Win_GParted.cc:90 src/Win_GParted.cc:1659
 #: src/Win_GParted.cc:1888
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: gparted.desktop.in.in:4
 msgid "Partition Editor"
@@ -562,8 +562,8 @@ msgid "Save Details"
 msgstr "_Detallies..."
 
 #: src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "Detallies de GParted"
+msgid "WParted Details"
+msgstr "Detallies de WParted"
 
 #. Device overview information
 #: src/Dialog_Progress.cc:427
@@ -935,8 +935,8 @@ msgstr "Fólder del Panel 1"
 #. another child containing the bug report, and allowing the child to be
 #. added anyway.
 #: src/GParted_Core.cc:68 src/OperationDetail.cc:149
-msgid "GParted Bug"
-msgstr "Defecte in GParted"
+msgid "WParted Bug"
+msgstr "Defecte in WParted"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: src/GParted_Core.cc:180 src/GParted_Core.cc:189
@@ -996,7 +996,7 @@ msgstr "Li sistema de file es coruptet"
 
 #: src/GParted_Core.cc:1371
 #, fuzzy
-msgid "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
 msgstr "Sistema de file"
 
 #: src/GParted_Core.cc:1373
@@ -1913,8 +1913,8 @@ msgid "_Devices"
 msgstr "_Aparates"
 
 #: src/Win_GParted.cc:191
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: src/Win_GParted.cc:220
 msgid "_Edit"
@@ -2052,8 +2052,8 @@ msgstr[0] "%1 operation in linea"
 msgstr[1] "%1 operationes in linea"
 
 #: src/Win_GParted.cc:1167
-msgid "Quit GParted?"
-msgstr "Surtir de GParted?"
+msgid "Quit WParted?"
+msgstr "Surtir de WParted?"
 
 #: src/Win_GParted.cc:1173
 msgid "%1 operation is currently pending."
@@ -2062,8 +2062,8 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: src/Win_GParted.cc:1584
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: src/Win_GParted.cc:1635
 #, fuzzy

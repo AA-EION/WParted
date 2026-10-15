@@ -62,8 +62,8 @@ msgstr ""
 #. ==== GUI =========================
 #: ../gparted.desktop.in.in.h:1 ../src/Win_GParted.cc:87
 #: ../src/Win_GParted.cc:1635 ../src/Win_GParted.cc:1860
-msgid "GParted"
-msgstr "GParted"
+msgid "WParted"
+msgstr "WParted"
 
 #: ../gparted.desktop.in.in.h:2
 msgid "Partition Editor"
@@ -563,8 +563,8 @@ msgid "Save Details"
 msgstr "Save Details"
 
 #: ../src/Dialog_Progress.cc:386
-msgid "GParted Details"
-msgstr "GParted Details"
+msgid "WParted Details"
+msgstr "WParted Details"
 
 #. Device overview information
 #: ../src/Dialog_Progress.cc:427
@@ -933,8 +933,8 @@ msgstr "Removed directory %1"
 #. added anyway.
 #: ../src/GParted_Core.cc:64 ../src/OperationDetail.cc:146
 #| msgid "GParted"
-msgid "GParted Bug"
-msgstr "GParted Bug"
+msgid "WParted Bug"
+msgstr "WParted Bug"
 
 #. TO TRANSLATORS: looks like Scanning /dev/sda
 #: ../src/GParted_Core.cc:181 ../src/GParted_Core.cc:190
@@ -995,8 +995,8 @@ msgid "The file system is damaged"
 msgstr "The file system is damaged"
 
 #: ../src/GParted_Core.cc:1317
-msgid "The file system is unknown to GParted"
-msgstr "The file system is unknown to GParted"
+msgid "The file system is unknown to WParted"
+msgstr "The file system is unknown to WParted"
 
 #: ../src/GParted_Core.cc:1319
 msgid "There is no file system available (unformatted)"
@@ -1901,8 +1901,8 @@ msgid "_Devices"
 msgstr "_Devices"
 
 #: ../src/Win_GParted.cc:188
-msgid "_GParted"
-msgstr "_GParted"
+msgid "_WParted"
+msgstr "_WParted"
 
 #: ../src/Win_GParted.cc:217
 msgid "_Edit"
@@ -2035,8 +2035,8 @@ msgstr[0] "%1 operation pending"
 msgstr[1] "%1 operations pending"
 
 #: ../src/Win_GParted.cc:1147
-msgid "Quit GParted?"
-msgstr "Quit GParted?"
+msgid "Quit WParted?"
+msgstr "Quit WParted?"
 
 #: ../src/Win_GParted.cc:1153
 msgid "%1 operation is currently pending."
@@ -2045,8 +2045,8 @@ msgstr[0] "%1 operation is currently pending."
 msgstr[1] "%1 operations are currently pending."
 
 #: ../src/Win_GParted.cc:1560
-msgid "%1 - GParted"
-msgstr "%1 - GParted"
+msgid "%1 - WParted"
+msgstr "%1 - WParted"
 
 #: ../src/Win_GParted.cc:1611
 msgid "Scanning all devices..."
