@@ -28,6 +28,7 @@
 
 #include "WinDiskBackend.h"
 
+#include <cstring>
 #include <mutex>
 
 #if defined(_WIN32)
@@ -233,6 +234,33 @@ std::map<int, std::string> disk_instances()
 	SetupDiDestroyDeviceInfoList(info);
 	return out;
 }
+
+
+class Win32Session : public DiskSession
+{
+public:
+	Win32Session(int index, uint64_t offset, uint64_t length, uint32_t sector_size, bool writable);
+	~Win32Session() override;
+	bool open(std::string& error);
+
+	uint64_t length() const override       { return m_length; }
+	uint32_t sector_size() const override  { return m_sector_size; }
+	bool writable() const override         { return m_writable; }
+	bool read(uint64_t offset, uint64_t length, void* buffer, std::string& error) override;
+	bool write(uint64_t offset, uint64_t length, const void* buffer, std::string& error) override;
+	bool flush(std::string& error) override;
+
+private:
+	bool in_range(uint64_t offset, uint64_t length, std::string& error) const;
+
+	int      m_index;
+	uint64_t m_offset;
+	uint64_t m_length;
+	uint32_t m_sector_size;
+	bool     m_writable;
+	HANDLE   m_handle = INVALID_HANDLE_VALUE;
+	std::vector<std::unique_ptr<Win32Volumes::Lock>> m_locks;
+};
 
 
 class Win32DiskBackend : public DiskBackend
@@ -495,6 +523,31 @@ public:
 	}
 
 
+	std::unique_ptr<DiskSession> open_session(int index, uint64_t offset, uint64_t length,
+	                                          bool writable, SessionRange range,
+	                                          std::string& error) override
+	{
+		DiskInfo info;
+		DiskLayout layout;
+		if (! query_disk(index, info, error) || ! read_layout(index, layout, error))
+			return nullptr;
+		if (writable && (info.read_only || info.offline))
+		{
+			error = "the disk is read-only";
+			return nullptr;
+		}
+		if (! session_range_allowed(layout, info.logical_sector_size, info.size_bytes, offset, length,
+		                            range, error))
+			return nullptr;
+
+		std::unique_ptr<Win32Session> session(new Win32Session(index, offset, length,
+		                                                        info.logical_sector_size, writable));
+		if (! session->open(error))
+			return nullptr;
+		return std::unique_ptr<DiskSession>(session.release());
+	}
+
+
 	bool write_layout(int index, const DiskLayout& current, const DiskLayout& layout,
 	                  bool new_table, std::string& error) override
 	{
@@ -657,7 +710,7 @@ public:
 	}
 
 
-private:
+public:
 	static bool transfer(HANDLE h, uint64_t lba, uint64_t count, uint32_t sector_size, void* buffer,
 	                     bool write, std::string& error)
 	{
@@ -706,6 +759,110 @@ private:
 	}
 };
 
+// Opened by Win32DiskBackend::open_session() after the range has been checked
+// against the partition table.  Writable sessions keep every Windows volume on
+// the range locked and dismounted until the session is destroyed.
+Win32Session::Win32Session(int index, uint64_t offset, uint64_t length, uint32_t sector_size,
+                           bool writable)
+ : m_index(index), m_offset(offset), m_length(length), m_sector_size(sector_size),
+   m_writable(writable)
+{
+}
+
+
+Win32Session::~Win32Session()
+{
+	std::string error;
+	if (m_handle != INVALID_HANDLE_VALUE)
+	{
+		if (m_writable)
+			FlushFileBuffers(m_handle);
+		CloseHandle(m_handle);
+	}
+	m_locks.clear();
+}
+
+
+bool Win32Session::open(std::string& error)
+{
+	if (m_writable)
+	{
+		Win32Volumes::Extent range;
+		range.disk   = static_cast<uint32_t>(m_index);
+		range.offset = m_offset;
+		range.length = m_length;
+		if (! Win32Volumes::lock_ranges(static_cast<uint32_t>(m_index), {range}, m_locks, error))
+			return false;
+	}
+	m_handle = open_disk(m_index, GENERIC_READ | (m_writable ? GENERIC_WRITE : 0));
+	if (m_handle == INVALID_HANDLE_VALUE)
+	{
+		error = "Unable to open " + to_utf8(physical_drive(m_index)) + ": " + last_error_message(GetLastError());
+		m_locks.clear();
+		return false;
+	}
+	return true;
+}
+
+
+bool Win32Session::in_range(uint64_t offset, uint64_t length, std::string& error) const
+{
+	if (length == 0 || offset > m_length || length > m_length - offset)
+	{
+		error = "access outside of the session range";
+		return false;
+	}
+	return true;
+}
+
+
+bool Win32Session::read(uint64_t offset, uint64_t length, void* buffer, std::string& error)
+{
+	if (! in_range(offset, length, error))
+		return false;
+	uint64_t first = offset / m_sector_size;
+	uint64_t last  = (offset + length + m_sector_size - 1) / m_sector_size;
+	uint64_t lba   = m_offset / m_sector_size + first;
+	if (offset % m_sector_size == 0 && length % m_sector_size == 0)
+		return Win32DiskBackend::transfer(m_handle, lba, last - first, m_sector_size, buffer, false, error);
+	std::vector<uint8_t> tmp((last - first) * m_sector_size);
+	if (! Win32DiskBackend::transfer(m_handle, lba, last - first, m_sector_size, tmp.data(), false, error))
+		return false;
+	std::memcpy(buffer, tmp.data() + (offset - first * m_sector_size), length);
+	return true;
+}
+
+
+bool Win32Session::write(uint64_t offset, uint64_t length, const void* buffer, std::string& error)
+{
+	if (! m_writable)
+	{
+		error = "session is read-only";
+		return false;
+	}
+	if (! in_range(offset, length, error))
+		return false;
+	if (offset % m_sector_size != 0 || length % m_sector_size != 0)
+	{
+		error = "unaligned write";
+		return false;
+	}
+	return Win32DiskBackend::transfer(m_handle, (m_offset + offset) / m_sector_size, length / m_sector_size,
+	                                  m_sector_size, const_cast<void*>(buffer), true, error);
+}
+
+
+bool Win32Session::flush(std::string& error)
+{
+	if (m_writable && ! FlushFileBuffers(m_handle))
+	{
+		error = "flush failed: " + last_error_message(GetLastError());
+		return false;
+	}
+	return true;
+}
+
+
 }  // anonymous namespace
 
 
@@ -738,6 +895,111 @@ namespace WParted
 {
 namespace WinDisk
 {
+
+namespace
+{
+
+// Session on top of read_sectors()/write_sectors(), which validate every write
+// themselves.
+class ForwardingSession : public DiskSession
+{
+public:
+	ForwardingSession(DiskBackend* backend, int index, uint64_t offset, uint64_t length,
+	                  uint32_t sector_size, bool writable)
+	 : m_backend(backend), m_index(index), m_offset(offset), m_length(length),
+	   m_sector_size(sector_size), m_writable(writable)
+	{}
+
+	uint64_t length() const override       { return m_length; }
+	uint32_t sector_size() const override  { return m_sector_size; }
+	bool writable() const override         { return m_writable; }
+
+	bool read(uint64_t offset, uint64_t length, void* buffer, std::string& error) override
+	{
+		if (! in_range(offset, length, error))
+			return false;
+		// Read the covering whole sectors and copy out the requested bytes.
+		uint64_t first = offset / m_sector_size;
+		uint64_t last  = (offset + length + m_sector_size - 1) / m_sector_size;
+		if (offset % m_sector_size == 0 && length % m_sector_size == 0)
+			return m_backend->read_sectors(m_index, m_offset / m_sector_size + first, last - first,
+			                               m_sector_size, buffer, error);
+		std::vector<uint8_t> tmp((last - first) * m_sector_size);
+		if (! m_backend->read_sectors(m_index, m_offset / m_sector_size + first, last - first,
+		                              m_sector_size, tmp.data(), error))
+			return false;
+		std::memcpy(buffer, tmp.data() + (offset - first * m_sector_size), length);
+		return true;
+	}
+
+	bool write(uint64_t offset, uint64_t length, const void* buffer, std::string& error) override
+	{
+		if (! m_writable)
+		{
+			error = "session is read-only";
+			return false;
+		}
+		if (! in_range(offset, length, error))
+			return false;
+		if (offset % m_sector_size != 0 || length % m_sector_size != 0)
+		{
+			error = "unaligned write";
+			return false;
+		}
+		return m_backend->write_sectors(m_index, (m_offset + offset) / m_sector_size, length / m_sector_size,
+		                                m_sector_size, buffer, error);
+	}
+
+	bool flush(std::string& error) override
+	{
+		return true;
+	}
+
+private:
+	bool in_range(uint64_t offset, uint64_t length, std::string& error) const
+	{
+		if (length == 0 || offset > m_length || length > m_length - offset)
+		{
+			error = "access outside of the session range";
+			return false;
+		}
+		return true;
+	}
+
+	DiskBackend* m_backend;
+	int          m_index;
+	uint64_t     m_offset;
+	uint64_t     m_length;
+	uint32_t     m_sector_size;
+	bool         m_writable;
+};
+
+}  // anonymous namespace
+
+
+std::unique_ptr<DiskSession> DiskBackend::open_session(int index, uint64_t offset, uint64_t length,
+                                                       bool writable, SessionRange range,
+                                                       std::string& error)
+{
+	DiskInfo info;
+	DiskLayout layout;
+	if (! query_disk(index, info, error) || ! read_layout(index, layout, error))
+		return nullptr;
+	if (! session_range_allowed(layout, info.logical_sector_size, info.size_bytes, offset, length,
+	                            range == SessionRange::INSIDE_PARTITION ? range
+	                                                                    : SessionRange::PARTITION_AND_FREE_SPACE,
+	                            error))
+		return nullptr;
+	if (range != SessionRange::INSIDE_PARTITION)
+	{
+		// write_sectors() would refuse the free space part.
+		error = "this disk backend does not support move sessions";
+		return nullptr;
+	}
+	return std::unique_ptr<DiskSession>(new ForwardingSession(this, index, offset, length,
+	                                                          info.logical_sector_size, writable));
+}
+
 
 static std::mutex   g_backend_mutex;
 static DiskBackend* g_backend = nullptr;

@@ -27,6 +27,7 @@
 #include "WinDiskModel.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -64,10 +65,35 @@ struct DiskInfo
 };
 
 
+// Access to one byte range of a disk for the duration of a file system
+// operation run by a helper program (see WinBroker.h) or a block copy.  The
+// range is validated once when the session is opened; while it is open any
+// Windows volume overlapping it stays locked and dismounted.  Offsets are
+// relative to the start of the range.  Writes must be whole sectors.
+class DiskSession
+{
+public:
+	virtual ~DiskSession() {}
+	virtual uint64_t length() const = 0;
+	virtual uint32_t sector_size() const = 0;
+	virtual bool writable() const = 0;
+	virtual bool read(uint64_t offset, uint64_t length, void* buffer, std::string& error) = 0;
+	virtual bool write(uint64_t offset, uint64_t length, const void* buffer, std::string& error) = 0;
+	virtual bool flush(std::string& error) = 0;
+};
+
+
 class DiskBackend
 {
 public:
 	virtual ~DiskBackend() {}
+
+	// Open a session on [offset, offset + length) of the disk.  The default
+	// implementation forwards to read_sectors()/write_sectors(), which check every
+	// write themselves, and only supports INSIDE_PARTITION.
+	virtual std::unique_ptr<DiskSession> open_session(int index, uint64_t offset, uint64_t length,
+	                                                  bool writable, SessionRange range,
+	                                                  std::string& error);
 
 	// Disk numbers of all disks, ascending.
 	virtual std::vector<int> enumerate_disks() = 0;

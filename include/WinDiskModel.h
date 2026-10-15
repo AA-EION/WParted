@@ -332,6 +332,26 @@ struct Extent
 std::vector<Extent> changed_extents(const DiskLayout& before, const DiskLayout& after);
 
 
+// Which byte ranges a DiskSession (see WinDiskBackend.h) may cover.
+enum class SessionRange
+{
+	// The range lies inside one existing partition (or anywhere on a disk without
+	// a partition table).
+	INSIDE_PARTITION,
+	// The range is covered by one existing primary or GPT partition plus
+	// unallocated space next to it.  Used while moving a partition: data is copied
+	// into free space before the partition table is changed.  Never covers the
+	// first MiB of the disk, partition table structures, extended partitions or
+	// any other partition.
+	PARTITION_AND_FREE_SPACE,
+};
+
+// Check a session range against the current layout.  'disk_size' in bytes.
+bool session_range_allowed(const DiskLayout& layout, uint32_t sector_size, uint64_t disk_size,
+                           uint64_t offset, uint64_t length, SessionRange range,
+                           std::string& reason);
+
+
 // Partition table properties which make a disk unsafe to modify with WParted.  Returns
 // an empty string when the disk can be modified.
 std::string unsupported_reason(const DiskModel& model, const RawTable* raw);

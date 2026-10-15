@@ -54,6 +54,7 @@ find_package(PkgConfig)
 add_library(wparted_disk STATIC
 	src/WinDiskModel.cc
 	src/WinDevNames.cc
+	src/WinBroker.cc
 	src/WinFsProbe.cc
 	src/WinScan.cc
 	src/PartedWin32Bridge.cc
@@ -70,6 +71,12 @@ if(WIN32)
 		_WIN32_WINNT=0x0A00 WINVER=0x0A00 UNICODE _UNICODE NOMINMAX)
 	target_link_libraries(wparted_disk PUBLIC setupapi ole32 oleaut32 uuid wbemuuid)
 endif()
+
+
+# Client side of the disk broker, linked into the helper programs.
+add_library(wparted_broker_client STATIC helpers/broker/wpbroker.c)
+target_include_directories(wparted_broker_client PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/helpers/broker")
+target_compile_options(wparted_broker_client PRIVATE -Wall -Wextra $<$<BOOL:${WPARTED_WERROR}>:-Werror>)
 
 
 # ---------------------------------------------------------------------------
@@ -229,9 +236,10 @@ if(WPARTED_BUILD_TESTS)
 		tests/test_WinDiskModel.cc
 		tests/test_PartedBridge.cc
 		tests/test_WinFsProbe.cc
+		tests/test_WinBroker.cc
 	)
 	target_include_directories(wparted_unit_tests PRIVATE tests)
-	target_link_libraries(wparted_unit_tests PRIVATE wparted_disk GTest::gtest_main)
+	target_link_libraries(wparted_unit_tests PRIVATE wparted_disk wparted_broker_client GTest::gtest_main)
 	add_test(NAME wparted_unit_tests COMMAND wparted_unit_tests)
 	if(DEFINED ENV{WPARTED_TEST_IMAGES})
 		set_tests_properties(wparted_unit_tests PROPERTIES ENVIRONMENT "WPARTED_TEST_IMAGES=$ENV{WPARTED_TEST_IMAGES}")

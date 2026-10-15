@@ -1457,6 +1457,107 @@ std::vector<Extent> changed_extents(const DiskLayout& before, const DiskLayout& 
 }
 
 
+static bool holds_data(const DiskLayout& layout, const LayoutEntry& e)
+{
+	if (e.length == 0)
+		return false;
+	if (layout.style == TableStyle::MBR)
+		return e.mbr_type != MbrType::EMPTY && ! MbrType::is_extended(e.mbr_type);
+	if (layout.style == TableStyle::GPT)
+		return ! e.gpt_type.is_null();
+	return false;
+}
+
+
+static bool overlaps(uint64_t a_off, uint64_t a_len, uint64_t b_off, uint64_t b_len)
+{
+	return a_off < b_off + b_len && b_off < a_off + a_len;
+}
+
+
+bool session_range_allowed(const DiskLayout& layout, uint32_t sector_size, uint64_t disk_size,
+                           uint64_t offset, uint64_t length, SessionRange range,
+                           std::string& reason)
+{
+	if (sector_size == 0 || length == 0 || offset % sector_size != 0 || length % sector_size != 0 ||
+	    offset > disk_size || length > disk_size - offset)
+	{
+		reason = "invalid range";
+		return false;
+	}
+
+	if (layout.style == TableStyle::RAW)
+	{
+		if (range == SessionRange::INSIDE_PARTITION)
+			return true;
+		reason = "the disk has no partition table";
+		return false;
+	}
+
+	if (range == SessionRange::INSIDE_PARTITION)
+	{
+		for (const LayoutEntry& e : layout.entries)
+			if (holds_data(layout, e) && offset >= e.offset && offset + length <= e.offset + e.length)
+				return true;
+		reason = "refusing to access outside of a single partition";
+		return false;
+	}
+
+	// PARTITION_AND_FREE_SPACE
+	const uint64_t MiB = 1024 * 1024;
+	if (offset < MiB)
+	{
+		reason = "refusing to write into the first MiB of the disk";
+		return false;
+	}
+	if (layout.style == TableStyle::GPT)
+	{
+		uint64_t first = layout.gpt_first_usable_offset;
+		uint64_t end   = first + layout.gpt_usable_length;
+		if (first == 0 || offset < first || offset + length > end)
+		{
+			reason = "range outside of the usable area of the GPT disk";
+			return false;
+		}
+	}
+	else
+	{
+		// MBR: keep away from the last sector (some tools keep a backup there)
+		// and from every extended partition and its EBR chain.
+		if (offset + length > disk_size - sector_size)
+		{
+			reason = "range reaches the end of the disk";
+			return false;
+		}
+		for (const LayoutEntry& e : layout.entries)
+			if (e.length != 0 && MbrType::is_extended(e.mbr_type) &&
+			    overlaps(offset, length, e.offset, e.length))
+			{
+				reason = "moving partitions inside an extended partition is not supported";
+				return false;
+			}
+	}
+
+	int touched = 0;
+	for (const LayoutEntry& e : layout.entries)
+	{
+		if (! holds_data(layout, e) || ! overlaps(offset, length, e.offset, e.length))
+			continue;
+		if (++touched > 1)
+		{
+			reason = "range overlaps more than one partition";
+			return false;
+		}
+	}
+	if (touched != 1)
+	{
+		reason = "range does not overlap the partition being moved";
+		return false;
+	}
+	return true;
+}
+
+
 std::string unsupported_reason(const DiskModel& model, const RawTable* raw)
 {
 	if (raw && raw->hybrid_mbr)
