@@ -92,8 +92,16 @@ cp -f "$PREFIX/bin/gdk-pixbuf-query-loaders.exe" "$DIST/bin/"
 (cd "$DIST/bin" && ./gdk-pixbuf-query-loaders.exe --update-cache)
 rm -f "$DIST/bin/gdk-pixbuf-query-loaders.exe"
 CACHE="$DIST/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-if [[ ! -s "$CACHE" ]] || grep -q -E '^"([A-Za-z]:)?[\\/]' "$CACHE"; then
-	echo "error: $CACHE is missing or holds absolute paths, the bundle would not be relocatable" >&2
+# Module lines are the unindented lines naming a DLL; the other lines are
+# loader details (MIME types, signatures such as "\211PNG...").
+modules=$(grep -E '^"[^"]*\.dll"' "$CACHE" || true)
+echo "$modules"
+if [[ -z "$modules" ]]; then
+	echo "error: $CACHE is missing or lists no loaders" >&2
+	exit 1
+fi
+if grep -q -E '^"([A-Za-z]:|[\\/])' <<< "$modules"; then
+	echo "error: $CACHE holds absolute module paths, the bundle would not be relocatable" >&2
 	exit 1
 fi
 

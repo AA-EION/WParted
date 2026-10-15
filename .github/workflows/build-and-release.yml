@@ -128,6 +128,7 @@ jobs:
       # main window from the bundle, checking the GTK runtime is complete.
       - name: Smoke test
         shell: pwsh
+        timeout-minutes: 5
         run: |
           $bin = (Resolve-Path dist\WParted\bin).Path
           $out = Join-Path $env:RUNNER_TEMP "smoke-out.txt"
