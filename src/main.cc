@@ -106,6 +106,7 @@ static int smoke_test()
 	          << " dialog-warning=" << theme->has_icon("dialog-warning") << std::endl;
 
 	WParted::WParted_Core core;
+	core.set_user_devices(std::vector<Glib::ustring>());  // Probe all disks, as the GUI does
 	std::vector<std::unique_ptr<WParted::Device>> devices;
 	core.set_devices(devices);
 	for (const auto& d : devices)
@@ -128,7 +129,8 @@ static int smoke_test()
 	}, 15);
 	Gtk::Main::run(window);
 	std::cout << "main window shown and closed" << std::endl;
-	return icons_ok ? EXIT_SUCCESS : EXIT_FAILURE;
+	// Any Windows machine has at least its system disk.
+	return icons_ok && ! devices.empty() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 #endif
 
