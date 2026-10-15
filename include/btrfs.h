@@ -1,8 +1,6 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2009,2010 Luca Bruno <lucab@debian.org>
+/* Copyright (C) 2009,2010 Luca Bruno <lucab@debian.org>
  * Copyright (C) 2010 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

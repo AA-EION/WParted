@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2017 Pali Rohár <pali.rohar@gmail.com>
+/* Copyright (C) 2017 Pali Rohár <pali.rohar@gmail.com>
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

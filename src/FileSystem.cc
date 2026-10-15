@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart
+/* Copyright (C) 2004 Bart
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +16,8 @@ Copyright (C) 2004 Bart
  */
 
 #include "FileSystem.h"
+
+#include <glib.h>
 #include "WParted_Core.h"
 #include "OperationDetail.h"
 
@@ -78,13 +78,14 @@ static UniqueTempWorkingDirPtr temp_working_dir = nullptr;
 UniqueTempWorkingDirPtr mk_temp_working_dir(OperationDetail& operationdetail)
 {
 	char dir_buf[4096+1];
-	snprintf(dir_buf, sizeof(dir_buf), "%s/gparted-XXXXXX", Glib::get_tmp_dir().c_str());
+	snprintf(dir_buf, sizeof(dir_buf), "%s/wparted-XXXXXX", Glib::get_tmp_dir().c_str());
 
 	// Looks like "mkdir -v" command was run to the user
 	operationdetail.add_child(OperationDetail(
 	                        Glib::ustring("mkdir -v ") + dir_buf, STATUS_EXECUTE, FONT_BOLD_ITALIC));
 	OperationDetail& child_od = operationdetail.get_last_child();
-	const char* dir_name = mkdtemp(dir_buf);
+	// g_mkdtemp() is the portable equivalent of mkdtemp(3) (also on Windows).
+	const char* dir_name = g_mkdtemp(dir_buf);
 	if (nullptr == dir_name)
 	{
 		int e = errno;

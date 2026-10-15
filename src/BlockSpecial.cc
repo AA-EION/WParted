@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2016 Mike Fleetwood
+/* Copyright (C) 2016 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,18 +22,8 @@ Copyright (C) 2016 Mike Fleetwood
 #include <sys/stat.h>
 #if !defined(_WIN32)
 #include <sys/sysmacros.h>
-#else
-#ifndef major
-#define major(dev) 0
-#endif
-#ifndef minor
-#define minor(dev) 0
-#endif
-#ifndef S_ISBLK
-#define S_ISBLK(m) 0
-#endif
-#endif
 #include <unistd.h>
+#endif
 #include <map>
 
 
@@ -72,6 +60,7 @@ BlockSpecial::BlockSpecial(const Glib::ustring& name) : m_name(name)
 	}
 
 	MM_Number pair = {0UL, 0UL};
+#if !defined(_WIN32)
 	// Call stat(name, ...) to get the major, minor pair
 	struct stat sb;
 	if ( stat( name.c_str(), &sb ) == 0 && S_ISBLK( sb.st_mode ) )
@@ -81,6 +70,9 @@ BlockSpecial::BlockSpecial(const Glib::ustring& name) : m_name(name)
 		pair.m_major = m_major;
 		pair.m_minor = m_minor;
 	}
+#endif
+	// On Windows there are no block special files; names are compared instead
+	// (see operator==()).
 	// Add new cache entry for name to major, minor pair
 	mm_number_cache[name] = pair;
 }

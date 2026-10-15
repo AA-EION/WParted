@@ -1,8 +1,6 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart
+/* Copyright (C) 2004 Bart
  * Copyright (C) 2008, 2009, 2010, 2011, 2012 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -97,6 +95,9 @@ private:
 	void set_device_from_disk( Device & device, const Glib::ustring & device_path );
 	void set_device_serial_number( Device & device );
 	void set_device_partitions( Device & device, PedDevice* lp_device, PedDisk* lp_disk ) ;
+#if defined(_WIN32)
+	void add_windows_messages( Partition & partition );
+#endif
 	void set_device_one_partition( Device & device, PedDevice * lp_device, FSType fstype,
 	                               std::vector<Glib::ustring> & messages );
 	void populate_vgdevice_partitions(VGDevice& vg_device);

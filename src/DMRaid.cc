@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2009, 2010, 2011 Curtis Gedak
+/* Copyright (C) 2009, 2010, 2011 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -102,9 +100,16 @@ void DMRaid::load_dmraid_cache()
 void DMRaid::set_commands_found()
 {
 	//Set status of commands found 
+#if defined(_WIN32)
+	// No Linux device-mapper on Windows.
+	dmraid_found = false;
+	dmsetup_found = false;
+	udevadm_found = false;
+#else
 	dmraid_found = (! Glib::find_program_in_path( "dmraid" ) .empty() ) ;
 	dmsetup_found = (! Glib::find_program_in_path( "dmsetup" ) .empty() ) ;
 	udevadm_found = (! Glib::find_program_in_path( "udevadm" ) .empty() ) ;
+#endif
 }
 
 bool DMRaid::is_dmraid_supported()
@@ -147,7 +152,11 @@ bool DMRaid::is_dmraid_device( const Glib::ustring & dev_path )
 		if (! device_found && Glib::file_test(dev_path, Glib::FILE_TEST_IS_SYMLINK))
 		{
 			//Path is a symbolic link so find real path
+#if defined(_WIN32)
+			char* rpath = nullptr;  // No symbolic link device names on Windows
+#else
 			char* rpath = realpath(dev_path.c_str(), nullptr);
+#endif
 			if (rpath != nullptr)
 			{
 				Glib::ustring tmp_path = rpath;
@@ -201,7 +210,11 @@ Glib::ustring DMRaid::get_dmraid_name( const Glib::ustring & dev_path )
 		if (dmraid_name.empty() && Glib::file_test(dev_path, Glib::FILE_TEST_IS_SYMLINK))
 		{
 			//Path is a symbolic link so find real path
+#if defined(_WIN32)
+			char* rpath = nullptr;  // No symbolic link device names on Windows
+#else
 			char* rpath = realpath(dev_path.c_str(), nullptr);
+#endif
 			if (rpath != nullptr)
 			{
 				Glib::ustring tmp_path = rpath;

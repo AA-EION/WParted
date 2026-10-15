@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2016 Mike Fleetwood
+/* Copyright (C) 2016 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,6 +38,10 @@ Copyright (C) 2016 Mike Fleetwood
 #include "reiserfs.h"
 #include "udf.h"
 #include "xfs.h"
+
+#if defined(_WIN32)
+#include "WinNativeFS.h"
+#endif
 
 #include <memory>
 
@@ -95,7 +97,30 @@ SupportedFileSystems::SupportedFileSystems()
 	m_fs_objects[FS_REFS]            = nullptr;
 	m_fs_objects[FS_UFS]             = nullptr;
 	m_fs_objects[FS_ZFS]             = nullptr;
+
+#if defined(_WIN32)
+	// File systems managed by Windows itself use the native Windows
+	// implementation instead of the Linux tools.
+	m_fs_objects[FS_NTFS]  = std::make_unique<WinNativeFS>(FS_NTFS);
+	m_fs_objects[FS_FAT16] = std::make_unique<WinNativeFS>(FS_FAT16);
+	m_fs_objects[FS_FAT32] = std::make_unique<WinNativeFS>(FS_FAT32);
+	m_fs_objects[FS_EXFAT] = std::make_unique<WinNativeFS>(FS_EXFAT);
+#endif
 }
+
+
+#if defined(_WIN32)
+// On Windows only file systems Windows manages natively can be operated on.  All
+// others (ext2/3/4, btrfs, xfs, LUKS, LVM2 PV, linux-swap, ...) are detected and
+// displayed, with their partitions still deletable and their partition type and
+// flags changeable, but their contents can not be created, checked, resized or
+// labelled: that would need the Linux tools.  Never probe PATH for Linux tools
+// here; an MSYS2 or Cygwin build of e.g. mkfs.ext4 must not be used.
+static bool windows_native(FSType fstype)
+{
+	return fstype == FS_NTFS || fstype == FS_FAT16 || fstype == FS_FAT32 || fstype == FS_EXFAT;
+}
+#endif
 
 
 void SupportedFileSystems::find_supported_filesystems()
@@ -110,6 +135,20 @@ void SupportedFileSystems::find_supported_filesystems()
 
 	for (iter = m_fs_objects.begin(); iter != m_fs_objects.end(); iter++)
 	{
+#if defined(_WIN32)
+		if (iter->second && windows_native(iter->first))
+		{
+			m_fs_support.push_back(iter->second->get_filesystem_support());
+		}
+		else
+		{
+			// Detection only.  Busy state comes from Windows (drive letters).
+			FS fs_detect_only(iter->first);
+			fs_detect_only.busy = FS::GPARTED;
+			m_fs_support.push_back(fs_detect_only);
+		}
+		continue;
+#endif
 		if (iter->second)
 		{
 			m_fs_support.push_back(iter->second->get_filesystem_support());

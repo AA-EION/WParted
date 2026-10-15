@@ -1,8 +1,6 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart 'plors' Hakvoort
+/* Copyright (C) 2004 Bart 'plors' Hakvoort
  * Copyright (C) 2008, 2009, 2010, 2011 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -394,7 +392,11 @@ int Utils::get_filesystem_label_maxlength(FSType fstype)
 		case FS_JFS:        return 11;
 		case FS_LINUX_SWAP: return 15;
 		case FS_NILFS2:     return 80;
+#if defined(_WIN32)
+		case FS_NTFS:       return 32;   // Windows SetVolumeLabel / Format limit
+#else
 		case FS_NTFS:       return 128;
+#endif
 		case FS_REISER4:    return 16;
 		case FS_REISERFS:   return 16;
 		case FS_UDF:        return 126;  // and only 63 if label contains character above U+FF
@@ -539,6 +541,17 @@ const Glib::ustring Utils::get_filesystem_kernel_name( FSType fstype )
 
 const Glib::ustring Utils::get_filesystem_software(FSType fstype)
 {
+#if defined(_WIN32)
+	// On Windows only Windows' own file system support is used.
+	switch (fstype)
+	{
+		case FS_NTFS:
+		case FS_FAT16:
+		case FS_FAT32:
+		case FS_EXFAT:      return "Windows";
+		default:            return "";
+	}
+#endif
 	switch (fstype)
 	{
 		case FS_BCACHEFS:   return "bcachefs-tools";
@@ -587,8 +600,9 @@ const Glib::ustring Utils::generate_encryption_mapping_name(const Glib::ustring&
 bool Utils::kernel_supports_fs( const Glib::ustring & fs )
 {
 #if defined(_WIN32)
+	// There is no Linux kernel on Windows.
 	(void)fs;
-	return true;
+	return false;
 #else
 	bool fs_supported = false ;
 
@@ -747,6 +761,20 @@ int Utils::execute_command( const Glib::ustring & command,
                             Glib::ustring & error,
                             bool use_C_locale )
 {
+#if defined(_WIN32)
+	// SAFETY: the GParted core and file system classes run Linux tools (blkid,
+	// mkfs.*, e2fsck, lvm, dmsetup, ...) with Linux device names.  On Windows a
+	// program with the same name found on PATH (e.g. from MSYS2 or Cygwin) could
+	// interpret those names differently and modify the wrong disk.  WParted never
+	// runs external programs this way on Windows; Windows file system operations
+	// are implemented natively (see WinFsOps).
+	(void)input;
+	(void)use_C_locale;
+	output.clear();
+	error = "WParted: refusing to run external command on Windows: " + command;
+	std::cerr << error << std::endl;
+	return 127;
+#endif
 	Glib::Pid pid;
 	int in = -1;
 	// set up pipes for capture
@@ -1009,13 +1037,18 @@ int Utils::get_mounted_filesystem_usage( const Glib::ustring & mountpoint,
 		wpath.resize(len);
 		MultiByteToWideChar(CP_UTF8, 0, mountpoint.c_str(), -1, &wpath[0], len);
 	}
+	if (! wpath.empty() && wpath.back() == L'\0')
+		wpath.pop_back();
+	if (! wpath.empty() && wpath.back() != L'\\')
+		wpath.push_back(L'\\');
 	ULARGE_INTEGER freeBytesAvail, totalBytes, totalFreeBytes;
 	if (GetDiskFreeSpaceExW(wpath.c_str(), &freeBytesAvail, &totalBytes, &totalFreeBytes)) {
 		fs_size = static_cast<Byte_Value>(totalBytes.QuadPart);
 		fs_free = static_cast<Byte_Value>(totalFreeBytes.QuadPart);
 		return 0;
 	}
-	error_message = "GetDiskFreeSpaceEx failed";
+	error_message = "GetDiskFreeSpaceEx(\"" + mountpoint + "\") failed with error " +
+	                Utils::num_to_str(static_cast<Sector>(GetLastError()));
 	return -1;
 #else
 	struct statvfs sfs ;
@@ -1037,6 +1070,11 @@ int Utils::get_mounted_filesystem_usage( const Glib::ustring & mountpoint,
 // Report whether the kernel considers the device busy or not.
 bool Utils::is_dev_busy(const Glib::ustring& path)
 {
+#if defined(_WIN32)
+	// No device special files on Windows.  Busy state comes from Mount_Info.
+	(void)path;
+	return false;
+#endif
 	int fd = open(path.c_str(), O_RDONLY|O_EXCL);
 	if (fd == -1 && errno == EBUSY)
 		return true;
@@ -1077,10 +1115,11 @@ Byte_Value Utils::ceil_size( Byte_Value value, Byte_Value rounding_size )
 bool Utils::get_kernel_version( int & major_ver, int & minor_ver, int & patch_ver )
 {
 #if defined(_WIN32)
-	major_ver = 6;
-	minor_ver = 5;
-	patch_ver = 0;
-	return true;
+	// There is no Linux kernel on Windows.
+	(void)major_ver;
+	(void)minor_ver;
+	(void)patch_ver;
+	return false;
 #else
 	static bool read_file = false ;
 	static int read_major_ver = 0 ;

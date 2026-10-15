@@ -1,8 +1,6 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2004 Bart 'plors' Hakvoort
+/* Copyright (C) 2004 Bart 'plors' Hakvoort
  * Copyright (C) 2008, 2009, 2010, 2011, 2012 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,6 +39,14 @@ Copyright (C) 2004 Bart 'plors' Hakvoort
 #include "Utils.h"
 #include "VGDevice.h"
 #include "config.h"
+#if defined(_WIN32)
+#include "WinPartedBridge.h"
+#include "WinDevNames.h"
+#include "WinDiskBackend.h"
+#include "WinScan.h"
+#include "WinFsOps.h"
+#include "WinNativeFS.h"
+#endif
 #include "btrfs.h"
 
 #include <parted/parted.h>
@@ -77,7 +83,7 @@ const std::time_t SETTLE_DEVICE_APPLY_MAX_WAIT_SECONDS = 10;
 
 static bool udevadm_found = false;
 
-static const Glib::ustring GPARTED_BUG( _("GParted Bug") );
+static const Glib::ustring GPARTED_BUG( _("WParted Bug") );
 
 
 WParted_Core::WParted_Core()
@@ -103,7 +109,11 @@ WParted_Core::WParted_Core()
 
 Glib::ustring WParted_Core::get_version_and_config_string()
 {
+#if defined(_WIN32)
+	Glib::ustring str = Glib::ustring("WParted ") + VERSION + " (Windows port of GParted)\n";
+#else
 	Glib::ustring str = Glib::ustring("GParted ") + VERSION + "\n";
+#endif
 
 	str += "configuration";
 	bool added_config_flag = false;
@@ -115,7 +125,11 @@ Glib::ustring WParted_Core::get_version_and_config_string()
 		str += " (none)";
 	str += "\n";
 
+#if defined(_WIN32)
+	str += Glib::ustring("partition tables: ") + ped_get_version() + "\n";
+#else
 	str += Glib::ustring("libparted ") + ped_get_version() + "\n";
+#endif
 
 	str += FS_Info::get_blkid_version_string();
 
@@ -125,7 +139,11 @@ Glib::ustring WParted_Core::get_version_and_config_string()
 
 void WParted_Core::find_supported_core()
 {
+#if defined(_WIN32)
+	udevadm_found = false;
+#else
 	udevadm_found = ! Glib::find_program_in_path( "udevadm" ).empty();
+#endif
 }
 
 
@@ -171,6 +189,9 @@ void WParted_Core::set_devices_thread(std::vector<std::unique_ptr<Device>>* pdev
 	                                        // pre-populates BlockSpecial cache.
 	DMRaid::load_cache();
 	LVM2_Info::clear_cache();
+#if defined(_WIN32)
+	WinFsOps::clear_cache();
+#endif
 
 	// Vectors of sorted, useable device and Volume Group names either probed or named
 	// on the command line.
@@ -798,6 +819,26 @@ void WParted_Core::set_device_from_disk( Device & device, const Glib::ustring & 
 
 		set_device_partitions(device, lp_device, lp_disk);
 
+#if defined(_WIN32)
+		// Windows always accepts partition table changes which leave the
+		// partitions of mounted volumes unchanged, so busy partitions do not make
+		// the device read-only.  Some disks must not be modified at all though
+		// (dynamic disks, Storage Spaces, hybrid MBR, inconsistent tables, write
+		// protected or offline disks).
+		std::string reason = WinPartedBridge::disk_readonly_reason(lp_disk);
+		if (! reason.empty())
+		{
+			device.readonly = true;
+			Glib::ustring message = Glib::ustring::compose(
+			        _("WParted will not modify %1: %2"), device.get_path(), reason);
+			for (unsigned int i = 0; i < device.partitions.size(); i++)
+			{
+				device.partitions[i].push_back_message(message);
+				for (unsigned int j = 0; j < device.partitions[i].logicals.size(); j++)
+					device.partitions[i].logicals[j].push_back_message(message);
+			}
+		}
+#else
 		if (device.highest_busy)
 		{
 			// If any partitions are busy determine if the OS can be informed
@@ -810,7 +851,20 @@ void WParted_Core::set_device_from_disk( Device & device, const Glib::ustring & 
 			//     The kernel was unable to re-read the partition table...
 			libparted_messages.clear();
 		}
+#endif
 	}
+
+#if defined(_WIN32)
+	// Write protected / offline disks without a readable partition table.
+	if (lp_device->read_only && ! device.readonly)
+	{
+		device.readonly = true;
+		WinDisk::DiskInfo info;
+		if (WinPartedBridge::device_info(lp_device, info) && ! info.read_only_reason.empty())
+			for (unsigned int i = 0; i < device.partitions.size(); i++)
+				device.partitions[i].push_back_message(info.read_only_reason);
+	}
+#endif
 
 	destroy_device_and_disk(lp_device, lp_disk);
 	return;
@@ -819,6 +873,12 @@ void WParted_Core::set_device_from_disk( Device & device, const Glib::ustring & 
 
 void WParted_Core::set_device_serial_number( Device & device )
 {
+#if defined(_WIN32)
+	for (const WinDisk::DiskInfo& info : WinPartedBridge::registered_disks())
+		if (WinDevNames::disk_path(info.index) == device.get_path())
+			device.serial_number = info.serial;
+	return;
+#endif
 	if (! udevadm_found)
 		return;
 
@@ -828,6 +888,29 @@ void WParted_Core::set_device_serial_number( Device & device )
 	                       output, error, true);
 	device.serial_number = Utils::regexp_label(output, "^ID_SERIAL_SHORT=([^\n]*)$");
 }
+
+
+#if defined(_WIN32)
+// Explain Windows specific states of a partition in its information messages.
+void WParted_Core::add_windows_messages(Partition& partition)
+{
+	WinScan::VolumeState vol;
+	if (! WinScan::volume(partition.get_path().raw(), vol))
+		return;
+	if (vol.bitlocker)
+	{
+		if (vol.fs_mounted)
+			partition.push_back_message(_("This volume is encrypted with BitLocker and is unlocked.  "
+			                              "Windows resizes it while it stays encrypted."));
+		else
+			partition.push_back_message(_("This volume is encrypted with BitLocker and is locked.  "
+			                              "Unlock it in Windows to see and change its contents."));
+	}
+	std::string reason;
+	if (WinScan::busy(partition.get_path().raw(), reason) && (vol.system || vol.paging))
+		partition.push_back_message(Glib::ustring::compose(_("Windows is using this partition: %1."), reason));
+}
+#endif
 
 
 /**
@@ -951,6 +1034,9 @@ void WParted_Core::set_device_partitions( Device & device, PedDevice* lp_device,
 			set_partition_label_and_uuid( *partition_temp );
 			set_mountpoints( *partition_temp );
 			set_used_sectors( *partition_temp, lp_disk );
+#if defined(_WIN32)
+			add_windows_messages(*partition_temp);
+#endif
 
 			// Retrieve partition name
 			if ( device.partition_naming_supported() )
@@ -1319,9 +1405,30 @@ FSType WParted_Core::detect_filesystem_internal(const Glib::ustring& path, Byte_
 	FSType fstype = FS_UNKNOWN;
 	std::vector<char> buf(sector_size, 0);
 
+#if defined(_WIN32)
+	// No device special files: read the partition through the disk backend.
+	WinScan::Location loc;
+	WinDisk::DiskBackend* backend = WinDisk::get_backend();
+	if (! WinScan::locate(path.raw(), loc) || ! backend || loc.sector_size != sector_size)
+		return FS_UNKNOWN;
+	auto read_sector = [&](Byte_Value byte_offset) -> bool
+	{
+		if (byte_offset < 0 || static_cast<uint64_t>(byte_offset) + sector_size > loc.length)
+			return false;
+		std::string error;
+		return backend->read_sectors(loc.disk, (loc.offset + static_cast<uint64_t>(byte_offset)) / sector_size,
+		                             1, static_cast<uint32_t>(sector_size), buf.data(), error);
+	};
+#else
 	int fd = open(path.c_str(), O_RDONLY|O_NONBLOCK);
 	if (fd == -1)
 		return FS_UNKNOWN;
+	auto read_sector = [&](Byte_Value byte_offset) -> bool
+	{
+		return lseek(fd, byte_offset, SEEK_SET)  == byte_offset &&
+		       read(fd, buf.data(), sector_size) == sector_size;
+	};
+#endif
 
 	static const std::string apfs_sig1("\x01\x00", 2);
 	static const struct {
@@ -1380,8 +1487,7 @@ FSType WParted_Core::detect_filesystem_internal(const Glib::ustring& path, Byte_
 		// previously read sector.
 		if (read_offset != prev_read_offset)
 		{
-			if (lseek(fd, read_offset, SEEK_SET)  == read_offset &&
-			    read(fd, buf.data(), sector_size) == sector_size   )
+			if (read_sector(read_offset))
 			{
 				prev_read_offset = read_offset;
 			}
@@ -1404,7 +1510,9 @@ FSType WParted_Core::detect_filesystem_internal(const Glib::ustring& path, Byte_
 		}
 	}
 
+#if !defined(_WIN32)
 	close(fd);
+#endif
 
 	return fstype;
 }
@@ -1520,7 +1628,7 @@ FSType WParted_Core::detect_filesystem(const PedDevice *lp_device, const PedPart
 	temp += "\n- "; 
 	temp += _( "The file system is damaged" ) ;
 	temp += "\n- " ; 
-	temp += _( "The file system is unknown to GParted" ) ;
+	temp += _( "The file system is unknown to WParted" ) ;
 	temp += "\n- "; 
 	temp += _( "There is no file system available (unformatted)" ) ; 
 	temp += "\n- "; 
@@ -2766,6 +2874,14 @@ bool WParted_Core::resize_plain( const Partition & partition_old,
 			STATUS_ERROR, FONT_ITALIC ) );
 		return false;
 	}
+
+#if defined(_WIN32)
+	// Windows grows and shrinks NTFS together with its partition (MSFT_Partition
+	// Resize), also while mounted.  This replaces GParted's separate file system and
+	// partition steps.  Windows itself checks the file system as needed.
+	if (WinNativeFS::resizes_with_partition(partition_old.fstype) && partition_old.fstype == partition_new.fstype)
+		return WinFsOps::resize_partition_and_filesystem(partition_old, partition_new, operationdetail);
+#endif
 
 	if (partition_new.fstype == FS_LINUX_SWAP)
 	{
@@ -4411,6 +4527,15 @@ bool WParted_Core::update_bootsector(const Partition& partition, OperationDetail
 		beyond_32bit = true;
 	}
 
+#if defined(_WIN32)
+	// Only needed after moving or copying NTFS, which WParted does not do on
+	// Windows.  Never open "/dev/..." as a file on Windows.
+	(void)hidden_sectors;
+	operationdetail.get_last_child().add_child(OperationDetail(
+	        _("Updating the NTFS boot sector is not supported on Windows"), STATUS_ERROR, FONT_ITALIC));
+	operationdetail.get_last_child().set_success_and_capture_errors(false);
+	return false;
+#endif
 	std::ofstream dev_file;
 	dev_file.open(partition.get_path().c_str(), std::ios::out|std::ios::binary);
 	if (! dev_file)
@@ -4476,12 +4601,9 @@ bool WParted_Core::useable_device(const PedDevice* lp_device)
 	g_assert(lp_device != nullptr);  // Bug: Not initialised by call to ped_device_get() or ped_device_get_next()
 
 #if defined(_WIN32)
-	std::vector<char> buf(lp_device->sector_size ? lp_device->sector_size : 512);
-	if (ped_device_read(lp_device, buf.data(), 0, 1))
-		return true;
-
-	// In read-only mode or without direct raw sector rights, device is still useable if detected by Win32StorageEngine
-	return (lp_device->length > 0);
+	// Must be able to read the first sector, e.g. not an empty card reader.
+	std::vector<char> buf(lp_device->sector_size);
+	return lp_device->length > 0 && ped_device_read(lp_device, buf.data(), 0, 1);
 #else
 	std::vector<char> buf(lp_device->sector_size);
 

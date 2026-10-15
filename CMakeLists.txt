@@ -1,299 +1,246 @@
+# WParted - Windows Partition Editor, a Windows port of GParted
+#
+# Builds:
+#   wparted             The GTKmm 3 GUI (Windows only; MSYS2 UCRT64 / MinGW-w64)
+#   wparted_unit_tests  Platform independent unit tests (Windows and Linux)
+#   wparted_win_tests   Windows integration tests against a virtual disk (VHDX)
+#
+# Typical Windows build in an MSYS2 UCRT64 shell:
+#   cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+#   cmake --build build
+#   ctest --test-dir build
+#
+# Unit tests only, on Linux:
+#   cmake -S . -B build -DWPARTED_BUILD_GUI=OFF && cmake --build build && ctest --test-dir build
+
 cmake_minimum_required(VERSION 3.20)
+
 project(WParted
-    VERSION 1.0.0
-    DESCRIPTION "WParted — Native Windows Partition Editor (Forked from GParted)"
-    LANGUAGES C CXX
-)
+	VERSION 0.1.0
+	DESCRIPTION "Windows Partition Editor - a Windows port of GParted"
+	HOMEPAGE_URL "https://github.com/AA-EION/WParted"
+	LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
-# Enable CTest
-include(CTest)
+option(WPARTED_BUILD_GUI   "Build the wparted GUI (Windows, requires gtkmm-3.0)" ON)
+option(WPARTED_BUILD_TESTS "Build the tests" ON)
+option(WPARTED_WERROR      "Treat compiler warnings in WParted's own code as errors" OFF)
 
-# Options
-option(ENABLE_GUI "Build GTKmm GUI application" ON)
-option(BUILD_TESTS "Build test suite" ON)
-option(BUILD_BOOT_HELPER "Build Native boot-time companion executable" ON)
-option(BUILD_APFS_MOUNTER "Build APFS WinFsp mounter executable" ON)
+if(WPARTED_BUILD_GUI AND NOT WIN32)
+	message(FATAL_ERROR
+		"The WParted GUI is Windows only (on Linux use GParted itself).  "
+		"Configure with -DWPARTED_BUILD_GUI=OFF to build and run the unit tests.")
+endif()
 
-# Configure config.h
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/config.h"
-    @ONLY
+if(MSVC)
+	message(FATAL_ERROR
+		"WParted is built with MinGW-w64 GCC (MSYS2 UCRT64): gtkmm 3 is not available for MSVC.")
+endif()
+
+include(GNUInstallDirs)
+find_package(PkgConfig)
+
+
+# ---------------------------------------------------------------------------
+# Windows partition table layer.  Platform independent except for the Win32
+# backend and volume code; the same sources are unit tested on Linux.
+
+add_library(wparted_disk STATIC
+	src/WinDiskModel.cc
+	src/WinDevNames.cc
+	src/WinFsProbe.cc
+	src/WinScan.cc
+	src/PartedWin32Bridge.cc
+	src/Win32DiskBackend.cc
+	$<$<BOOL:${WIN32}>:src/Win32Volumes.cc>
+	$<$<BOOL:${WIN32}>:src/WinVolumeOps.cc>
 )
-
-# Common Include Directories
-include_directories(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/include"
-)
-
-# Windows definitions and compiler flags
+target_include_directories(wparted_disk PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_compile_definitions(wparted_disk PUBLIC WPARTED_VERSION_STRING="${PROJECT_VERSION}")
+target_compile_options(wparted_disk PRIVATE -Wall -Wextra -Wno-unused-parameter
+	$<$<BOOL:${WPARTED_WERROR}>:-Werror>)
 if(WIN32)
-    add_compile_definitions(
-        _WIN32_WINNT=0x0A00
-        WINVER=0x0A00
-        UNICODE
-        _UNICODE
-        HAVE_CONFIG_H=1
-        NOMINMAX
-        _CRT_SECURE_NO_WARNINGS
-    )
-    if(MSVC)
-        add_compile_options(/utf-8 /W3 /EHsc)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /MANIFEST:NO")
-    else()
-        add_compile_options(-Wall -Wextra -Wno-unused-parameter)
-    endif()
+	target_compile_definitions(wparted_disk PUBLIC
+		_WIN32_WINNT=0x0A00 WINVER=0x0A00 UNICODE _UNICODE NOMINMAX)
+	target_link_libraries(wparted_disk PUBLIC setupapi ole32 oleaut32 uuid wbemuuid)
 endif()
 
-# Core Windows Storage & Engine Library
-set(WPARTED_CORE_SOURCES
-    src/DualNomenclature.cc
-    src/Win32StorageEngine.cc
-    src/Win32VolumeLockGuard.cc
-    src/BitLockerGuard.cc
-    src/VdsWrapper.cc
-    src/FmifsWrapper.cc
-    src/WParted_Win32_Core.cc
-    src/WParted_WSL_Bridge.cc
-    src/ApfsDriver.cc
-    src/WParted_Boot_Scheduler.cc
-    src/PartedWin32Bridge.cc
-)
 
-# Core headers
-set(WPARTED_CORE_HEADERS
-    include/DualNomenclature.h
-    include/Win32StorageEngine.h
-    include/Win32VolumeLockGuard.h
-    include/BitLockerGuard.h
-    include/VdsWrapper.h
-    include/FmifsWrapper.h
-    include/WParted_Win32_Core.h
-    include/WParted_WSL_Bridge.h
-    include/ApfsDriver.h
-    include/ApfsStructures.h
-    include/WParted_Boot_Job.h
-    include/WParted_Boot_Scheduler.h
-    include/parted/parted.h
-    include/endian.h
-    include/unistd.h
-)
+# ---------------------------------------------------------------------------
+# GUI
 
-add_library(wparted_core STATIC
-    ${WPARTED_CORE_SOURCES}
-    ${WPARTED_CORE_HEADERS}
-)
+if(WPARTED_BUILD_GUI)
+	pkg_check_modules(GTKMM REQUIRED IMPORTED_TARGET gtkmm-3.0>=3.22)
+	set(HAVE_SET_PROPAGATE_NATURAL_WIDTH 1)
+	set(HAVE_GTK_SHOW_URI_ON_WINDOW 1)
+	set(ENABLE_NLS 1)
+	set(WPARTED_LOCALEDIR "share/locale")
+	configure_file(include/config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/config.h")
 
-target_include_directories(wparted_core PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/include"
-)
+	# The GParted sources, plus the Windows file system implementation.
+	set(WPARTED_GUI_SOURCES
+		src/main.cc
+		src/Win_WParted.cc
+		src/WParted_Core.cc
+		src/DrawingAreaVisualDisk.cc
+		src/TreeView_Detail.cc
+		src/HBoxOperations.cc
+		src/ProgressBar.cc
+		src/DialogManageFlags.cc
+		src/Dialog_Partition_Resize_Move.cc
+		src/Dialog_Partition_New.cc
+		src/Dialog_Partition_Copy.cc
+		src/Dialog_Partition_Info.cc
+		src/Dialog_Partition_Name.cc
+		src/Dialog_Disklabel.cc
+		src/Dialog_FileSystem_Label.cc
+		src/DialogFeatures.cc
+		src/Dialog_Progress.cc
+		src/DialogPasswordEntry.cc
+		src/Dialog_Base_Partition.cc
+		src/Frame_Resizer_Base.cc
+		src/Frame_Resizer_Extended.cc
+		src/OptionComboBox.cc
+		src/MenuHelpers.cc
+		src/Device.cc
+		src/Partition.cc
+		src/PartitionVector.cc
+		src/PartitionLUKS.cc
+		src/FileSystem.cc
+		src/SupportedFileSystems.cc
+		src/Operation.cc
+		src/OperationCreate.cc
+		src/OperationDelete.cc
+		src/OperationFormat.cc
+		src/OperationResizeMove.cc
+		src/OperationCopy.cc
+		src/OperationCheck.cc
+		src/OperationLabelFileSystem.cc
+		src/OperationNamePartition.cc
+		src/OperationChangeUUID.cc
+		src/OperationDetail.cc
+		src/PasswordRAMStore.cc
+		src/PipeCapture.cc
+		src/CopyBlocks.cc
+		src/BlockSpecial.cc
+		src/Utils.cc
+		src/FS_Info.cc
+		src/Proc_Partitions_Info.cc
+		src/Mount_Info.cc
+		src/LUKS_Info.cc
+		src/LVM2_Info.cc
+		src/BCache_Info.cc
+		src/SWRaid_Info.cc
+		src/DMRaid.cc
+		src/VGDevice.cc
+		src/bcachefs.cc
+		src/btrfs.cc
+		src/exfat.cc
+		src/ext2.cc
+		src/f2fs.cc
+		src/fat16.cc
+		src/hfs.cc
+		src/hfsplus.cc
+		src/jfs.cc
+		src/linux_swap.cc
+		src/luks.cc
+		src/lvm2_pv.cc
+		src/minix.cc
+		src/nilfs2.cc
+		src/ntfs.cc
+		src/reiser4.cc
+		src/reiserfs.cc
+		src/udf.cc
+		src/xfs.cc
+		src/WinFsOps.cc
+		src/WinNativeFS.cc
+	)
 
-if(WIN32)
-    target_link_libraries(wparted_core PUBLIC
-        setupapi
-        ole32
-        oleaut32
-        advapi32
-        kernel32
-        user32
-        shell32
-        mpr
-        rstrtmgr
-    )
+	configure_file(resources/wparted.rc.in "${CMAKE_CURRENT_BINARY_DIR}/wparted.rc" @ONLY)
+	configure_file(resources/wparted.exe.manifest.in "${CMAKE_CURRENT_BINARY_DIR}/wparted.exe.manifest" @ONLY)
+	file(COPY resources/wparted.ico DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+
+	add_executable(wparted WIN32 ${WPARTED_GUI_SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/wparted.rc")
+	target_include_directories(wparted PRIVATE
+		"${CMAKE_CURRENT_BINARY_DIR}/include"
+		"${CMAKE_CURRENT_SOURCE_DIR}/include/win32compat")
+	target_compile_definitions(wparted PRIVATE HAVE_CONFIG_H=1)
+	target_link_libraries(wparted PRIVATE wparted_disk PkgConfig::GTKMM)
+	install(TARGETS wparted RUNTIME DESTINATION bin)
+
+	# Translations (GParted's, the user interface is the same)
+	find_program(MSGFMT_EXECUTABLE msgfmt)
+	if(MSGFMT_EXECUTABLE)
+		file(STRINGS po/LINGUAS WPARTED_LINGUAS REGEX "^[^#]")
+		set(WPARTED_MO_FILES)
+		foreach(lang IN LISTS WPARTED_LINGUAS)
+			string(STRIP "${lang}" lang)
+			set(mo "${CMAKE_CURRENT_BINARY_DIR}/share/locale/${lang}/LC_MESSAGES/wparted.mo")
+			add_custom_command(OUTPUT "${mo}"
+				COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/share/locale/${lang}/LC_MESSAGES"
+				COMMAND "${MSGFMT_EXECUTABLE}" -o "${mo}" "${CMAKE_CURRENT_SOURCE_DIR}/po/${lang}.po"
+				DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/po/${lang}.po"
+				VERBATIM)
+			list(APPEND WPARTED_MO_FILES "${mo}")
+			install(FILES "${mo}" DESTINATION "share/locale/${lang}/LC_MESSAGES")
+		endforeach()
+		add_custom_target(wparted_translations ALL DEPENDS ${WPARTED_MO_FILES})
+	else()
+		message(WARNING "msgfmt not found: translations will not be built")
+	endif()
+
+	# Application icons for the GTK icon theme ("wparted")
+	foreach(size 16 22 24 32 48)
+		install(FILES "data/icons/hicolor_apps_${size}x${size}_wparted.png"
+			DESTINATION "share/icons/hicolor/${size}x${size}/apps" RENAME wparted.png)
+	endforeach()
+	install(FILES data/icons/hicolor_apps_scalable_wparted.svg
+		DESTINATION share/icons/hicolor/scalable/apps RENAME wparted.svg)
 endif()
 
-# Resource file
-set(WPARTED_RC "${CMAKE_CURRENT_SOURCE_DIR}/resources/wparted.rc")
 
-# Check for GTKmm
-if(WIN32 AND NOT PKG_CONFIG_EXECUTABLE)
-    find_program(PKG_CONFIG_EXECUTABLE
-        NAMES pkgconf pkg-config
-        HINTS
-            "C:/msys64/ucrt64/bin"
-            "C:/msys64/mingw64/bin"
-            "C:/msys64/clang64/bin"
-    )
-    if(PKG_CONFIG_EXECUTABLE)
-        get_filename_component(_PKG_BIN_DIR "${PKG_CONFIG_EXECUTABLE}" DIRECTORY)
-        if(NOT DEFINED ENV{PKG_CONFIG_PATH} AND EXISTS "${_PKG_BIN_DIR}/../lib/pkgconfig")
-            set(ENV{PKG_CONFIG_PATH} "${_PKG_BIN_DIR}/../lib/pkgconfig;${_PKG_BIN_DIR}/../share/pkgconfig")
-        endif()
-    endif()
-endif()
-
-find_package(PkgConfig QUIET)
-set(GTKMM_FOUND FALSE)
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(GTKMM QUIET gtkmm-3.0)
-    if(NOT GTKMM_FOUND)
-        pkg_check_modules(GTKMM QUIET gtkmm-4.0)
-    endif()
-endif()
-
-# WParted GUI Application
-if(ENABLE_GUI)
-    if(GTKMM_FOUND)
-        message(STATUS "Found GTKmm: ${GTKMM_LIBRARIES}")
-        
-        # Original GParted GUI sources adapted for WParted
-        set(WPARTED_GUI_SOURCES
-            src/main.cc
-            src/Win_WParted.cc
-            src/WParted_Core.cc
-            src/DrawingAreaVisualDisk.cc
-            src/TreeView_Detail.cc
-            src/HBoxOperations.cc
-            src/ProgressBar.cc
-            src/DialogManageFlags.cc
-            src/Dialog_Partition_Resize_Move.cc
-            src/Dialog_Partition_New.cc
-            src/Dialog_Partition_Copy.cc
-            src/Dialog_Partition_Info.cc
-            src/Dialog_Partition_Name.cc
-            src/Dialog_Disklabel.cc
-            src/Dialog_FileSystem_Label.cc
-            src/DialogFeatures.cc
-            src/Dialog_Progress.cc
-            src/DialogPasswordEntry.cc
-            src/Dialog_Base_Partition.cc
-            src/Frame_Resizer_Base.cc
-            src/Frame_Resizer_Extended.cc
-            src/OptionComboBox.cc
-            src/MenuHelpers.cc
-            src/Device.cc
-            src/Partition.cc
-            src/PartitionVector.cc
-            src/PartitionLUKS.cc
-            src/FileSystem.cc
-            src/SupportedFileSystems.cc
-            src/Operation.cc
-            src/OperationCreate.cc
-            src/OperationDelete.cc
-            src/OperationFormat.cc
-            src/OperationResizeMove.cc
-            src/OperationCopy.cc
-            src/OperationCheck.cc
-            src/OperationLabelFileSystem.cc
-            src/OperationNamePartition.cc
-            src/OperationChangeUUID.cc
-            src/OperationDetail.cc
-            src/PasswordRAMStore.cc
-            src/PipeCapture.cc
-            src/CopyBlocks.cc
-            src/BlockSpecial.cc
-            src/Utils.cc
-            src/FS_Info.cc
-            src/Proc_Partitions_Info.cc
-            src/Mount_Info.cc
-            src/LUKS_Info.cc
-            src/LVM2_Info.cc
-            src/BCache_Info.cc
-            src/SWRaid_Info.cc
-            src/DMRaid.cc
-            src/VGDevice.cc
-            src/bcachefs.cc
-            src/btrfs.cc
-            src/exfat.cc
-            src/ext2.cc
-            src/f2fs.cc
-            src/fat16.cc
-            src/hfs.cc
-            src/hfsplus.cc
-            src/jfs.cc
-            src/linux_swap.cc
-            src/luks.cc
-            src/lvm2_pv.cc
-            src/minix.cc
-            src/nilfs2.cc
-            src/ntfs.cc
-            src/reiser4.cc
-            src/reiserfs.cc
-            src/udf.cc
-            src/xfs.cc
-        )
-
-        add_executable(wparted WIN32
-            ${WPARTED_GUI_SOURCES}
-            ${WPARTED_RC}
-        )
-
-        target_include_directories(wparted PRIVATE ${GTKMM_INCLUDE_DIRS})
-        target_link_libraries(wparted PRIVATE wparted_core ${GTKMM_LIBRARIES})
-        target_compile_options(wparted PRIVATE ${GTKMM_CFLAGS_OTHER})
-    else()
-        message(STATUS "GTKmm not found. Building standalone WParted executable.")
-        add_executable(wparted
-            src/wparted_main.cc
-            ${WPARTED_RC}
-        )
-        target_link_libraries(wparted PRIVATE wparted_core)
-    endif()
-endif()
-
-# APFS WinFsp Read-Only Mounter Executable
-if(BUILD_APFS_MOUNTER)
-    add_executable(wparted-apfs-mount
-        src/wparted-apfs-mount.cc
-        ${WPARTED_RC}
-    )
-    target_link_libraries(wparted-apfs-mount PRIVATE wparted_core)
-endif()
-
-# Windows Native Subsystem Early Boot Companion
-if(BUILD_BOOT_HELPER AND WIN32)
-    add_executable(wparted-boot
-        src/wparted-boot.cc
-    )
-    if(MSVC)
-        target_compile_options(wparted-boot PRIVATE /GS-)
-        target_link_options(wparted-boot PRIVATE
-            "/SUBSYSTEM:NATIVE"
-            "/ENTRY:NtProcessStartup"
-            "/NODEFAULTLIB"
-        )
-        set_target_properties(wparted-boot PROPERTIES
-            LINK_FLAGS "/NODEFAULTLIB:kernel32.lib /NODEFAULTLIB:user32.lib /NODEFAULTLIB:gdi32.lib /NODEFAULTLIB:winspool.lib /NODEFAULTLIB:shell32.lib /NODEFAULTLIB:ole32.lib /NODEFAULTLIB:oleaut32.lib /NODEFAULTLIB:uuid.lib /NODEFAULTLIB:comdlg32.lib /NODEFAULTLIB:advapi32.lib"
-        )
-        target_link_libraries(wparted-boot PRIVATE ntdll.lib)
-    else()
-        target_link_options(wparted-boot PRIVATE
-            "-Wl,--subsystem,native"
-            "-Wl,-e,NtProcessStartup"
-            "-nostdlib"
-        )
-        target_link_libraries(wparted-boot PRIVATE ntdll)
-    endif()
-endif()
-
+# ---------------------------------------------------------------------------
 # Tests
-if(BUILD_TESTS)
-    set(GTEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/gtest")
-    add_library(gtest STATIC
-        "${GTEST_DIR}/src/gtest-all.cc"
-        "${GTEST_DIR}/src/gtest_main.cc"
-    )
-    target_include_directories(gtest PUBLIC
-        "${GTEST_DIR}/include"
-        "${GTEST_DIR}"
-    )
 
-    add_executable(wparted_tests
-        tests/test_win32_storage.cc
-        tests/test_wsl_bridge.cc
-        tests/test_apfs_parser.cc
-        tests/test_boot_job.cc
-        tests/test_dual_nomenclature.cc
-    )
-    target_link_libraries(wparted_tests PRIVATE
-        gtest
-        wparted_core
-    )
-    add_test(NAME AllWPartedTests COMMAND wparted_tests)
+if(WPARTED_BUILD_TESTS)
+	enable_testing()
+	find_package(GTest QUIET)
+	if(NOT GTest_FOUND)
+		add_library(wparted_gtest STATIC lib/gtest/src/gtest-all.cc)
+		target_include_directories(wparted_gtest PUBLIC
+			"${CMAKE_CURRENT_SOURCE_DIR}/lib/gtest/include"
+			"${CMAKE_CURRENT_SOURCE_DIR}/lib/gtest")
+		find_package(Threads REQUIRED)
+		target_link_libraries(wparted_gtest PUBLIC Threads::Threads)
+		add_library(wparted_gtest_main STATIC lib/gtest/src/gtest_main.cc)
+		target_link_libraries(wparted_gtest_main PUBLIC wparted_gtest)
+		add_library(GTest::gtest ALIAS wparted_gtest)
+		add_library(GTest::gtest_main ALIAS wparted_gtest_main)
+	endif()
+
+	add_executable(wparted_unit_tests
+		tests/MemDiskBackend.cc
+		tests/test_WinDiskModel.cc
+		tests/test_PartedBridge.cc
+		tests/test_WinFsProbe.cc
+	)
+	target_include_directories(wparted_unit_tests PRIVATE tests)
+	target_link_libraries(wparted_unit_tests PRIVATE wparted_disk GTest::gtest_main)
+	add_test(NAME wparted_unit_tests COMMAND wparted_unit_tests)
+	if(DEFINED ENV{WPARTED_TEST_IMAGES})
+		set_tests_properties(wparted_unit_tests PROPERTIES ENVIRONMENT "WPARTED_TEST_IMAGES=$ENV{WPARTED_TEST_IMAGES}")
+	endif()
+
+	if(WIN32)
+		# Runs real partition table and file system operations, but only on the
+		# virtual disk named by WPARTED_TEST_VHD_DISK (see tests/test_WinIntegration.cc).
+		add_executable(wparted_win_tests tests/test_WinIntegration.cc)
+		target_link_libraries(wparted_win_tests PRIVATE wparted_disk GTest::gtest_main)
+	endif()
 endif()

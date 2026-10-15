@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2012 Mike Fleetwood
+/* Copyright (C) 2012 Mike Fleetwood
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -352,7 +350,11 @@ void LVM2_Info::initialize_if_required()
 void LVM2_Info::set_command_found()
 {
 	//Set status of command found
+#if defined(_WIN32)
+	lvm_found = false;  // No Linux LVM on Windows
+#else
 	lvm_found = ( ! Glib::find_program_in_path( "lvm" ) .empty() ) ;
+#endif
 }
 
 

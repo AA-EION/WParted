@@ -1,7 +1,5 @@
-/* WParted — Native Windows Partition Editor (Forked from GParted)
- * Copyright (C) 2026 WParted Contributors
- *
-Copyright (C) 2008, 2009, 2010 Curtis Gedak
+/* Copyright (C) 2008, 2009, 2010 Curtis Gedak
+ * Copyright (C) 2026 WParted contributors (Windows port)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +25,10 @@ Copyright (C) 2008, 2009, 2010 Curtis Gedak
 #include <glibmm/miscutils.h>
 #include <glibmm/shell.h>
 #include <vector>
+
+#if defined(_WIN32)
+#include "WinScan.h"
+#endif
 
 
 namespace WParted
@@ -209,13 +211,21 @@ Glib::ustring FS_Info::get_path_by_label( const Glib::ustring & label )
 bool FS_Info::not_initialised_then_error()
 {
 	if (! fs_info_cache_initialized)
-		std::cerr << "GParted Bug: FS_Info (blkid) cache not loaded before use" << std::endl;
+		std::cerr << "WParted Bug: FS_Info (blkid) cache not loaded before use" << std::endl;
 	return ! fs_info_cache_initialized;
 }
 
 
 void FS_Info::set_command_found()
 {
+#if defined(_WIN32)
+	// Windows: file systems are identified by the built in WinFsProbe, never by
+	// running a blkid program.
+	blkid_found = false;
+	need_blkid_vfat_cache_update_workaround = false;
+	full_blkid_version = "file system detection: WParted built in signature probe (blkid compatible)";
+	return;
+#endif
 	blkid_found = (! Glib::find_program_in_path( "blkid" ) .empty() ) ;
 	if (! blkid_found)
 	{
@@ -255,8 +265,67 @@ FS_Entry& FS_Info::get_cache_entry_by_path(const Glib::ustring& path)
 }
 
 
+#if defined(_WIN32)
+// Map a Windows file system name to the blkid TYPE and SEC_TYPE.
+static void windows_fs_to_blkid(const std::string& fs, Glib::ustring& type, Glib::ustring& sec_type)
+{
+	type.clear();
+	sec_type.clear();
+	if (fs == "NTFS")       type = "ntfs";
+	else if (fs == "FAT32") type = "vfat";
+	else if (fs == "FAT")  { type = "vfat"; sec_type = "msdos"; }
+	else if (fs == "exFAT") type = "exfat";
+	else if (fs == "ReFS")  type = "ReFS";
+	else if (fs == "UDF")   type = "udf";
+	else if (fs == "CDFS")  type = "iso9660";
+}
+#endif
+
+
 void FS_Info::run_blkid_load_cache(const std::vector<Glib::ustring>& paths)
 {
+#if defined(_WIN32)
+	for (unsigned int i = 0; i < paths.size(); i++)
+	{
+		FS_Entry fs_entry;
+		fs_entry.path = BlockSpecial(paths[i]);
+		WinFsProbe::Result probe;
+		bool probed = WinScan::probe(paths[i], probe);
+		if (probed)
+		{
+			fs_entry.type       = probe.type;
+			fs_entry.sec_type   = probe.sec_type;
+			fs_entry.uuid       = probe.uuid;
+			fs_entry.have_label = probe.have_label;
+			fs_entry.label      = probe.label;
+		}
+
+		// The file system mounted by Windows is authoritative: it reads labels
+		// (e.g. NTFS) the probe can not, and sees through unlocked BitLocker.
+		WinScan::VolumeState vol;
+		if (WinScan::volume(paths[i], vol) && vol.fs_mounted)
+		{
+			Glib::ustring type, sec_type;
+			windows_fs_to_blkid(vol.fs_name, type, sec_type);
+			if (! type.empty())
+			{
+				if (fs_entry.type != type)
+				{
+					fs_entry.type     = type;
+					fs_entry.sec_type = sec_type;
+					fs_entry.uuid.clear();
+				}
+				fs_entry.have_label = true;
+				fs_entry.label      = vol.label;
+			}
+		}
+
+		if (! fs_entry.type.empty())
+			fs_info_cache.push_back(fs_entry);
+	}
+	return;
+#endif
+
 	// Parse blkid output line by line extracting mandatory field: path and optional
 	// fields: type, sec_type, uuid.  Label is not extracted here because of blkid's
 	// default non-reversible encoding of non printable ASCII bytes.
@@ -361,7 +430,7 @@ void FS_Info::update_fs_info_cache_all_labels()
 bool FS_Info::run_blkid_update_cache_one_label( FS_Entry & fs_entry )
 {
 	if ( ! blkid_found )
-		return false;
+		return false;  // On Windows labels are read when the cache is loaded
 
 	// (#786502) Run a separate blkid execution for a single partition to get the
 	// label without blkid's default non-reversible encoding.
