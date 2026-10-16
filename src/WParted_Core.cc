@@ -46,6 +46,8 @@
 #include "WinScan.h"
 #include "WinFsOps.h"
 #include "WinNativeFS.h"
+#include "WinHelpers.h"
+#include "WinCopy.h"
 #endif
 #include "btrfs.h"
 
@@ -3558,6 +3560,36 @@ bool WParted_Core::copy_blocks( const Glib::ustring & src_device,
                                 bool cancel_safe )
 {
 	operationdetail .add_child( OperationDetail( _("using internal algorithm"), STATUS_NONE ) ) ;
+#if defined(_WIN32)
+	// The volumes involved stay locked for the whole copy, and every block written
+	// is read back and compared (WinCopy.h).
+	WinDisk::CopyContext copy_context;
+	{
+		std::string error;
+		int src_disk = WinDevNames::disk_index(src_device.raw());
+		int dst_disk = WinDevNames::disk_index(dst_device.raw());
+		uint64_t dst_length = uint64_t((src_length + dst_sector_size - 1) / dst_sector_size) * dst_sector_size;
+		if (src_disk < 0 || dst_disk < 0)
+			error = "Unable to locate the partitions on Windows disks";
+		if (! error.empty() ||
+		    ! copy_context.open(src_disk, uint64_t(src_start) * src_sector_size, src_length,
+		                        dst_disk, uint64_t(dst_start) * dst_sector_size, dst_length, error))
+		{
+			operationdetail.add_child(OperationDetail(error, STATUS_ERROR, FONT_ITALIC));
+			return false;
+		}
+		if (uint64_t(src_sector_size) != copy_context.src_sector_size() ||
+		    uint64_t(dst_sector_size) != copy_context.dst_sector_size())
+		{
+			operationdetail.add_child(OperationDetail("Sector size mismatch", STATUS_ERROR, FONT_ITALIC));
+			return false;
+		}
+	}
+	WinDisk::CopyContext::set_current(&copy_context);
+	operationdetail.add_child(OperationDetail(
+	        _("Windows: volumes locked for the copy, every block written is read back and compared"),
+	        STATUS_NONE, FONT_ITALIC));
+#endif
 	operationdetail .add_child( OperationDetail(
 		Glib::ustring::compose( /*TO TRANSLATORS: looks like  copy 1.00 MiB */
 		                  _("copy %1"), Utils::format_size( src_length, 1 ) ),
@@ -4528,13 +4560,46 @@ bool WParted_Core::update_bootsector(const Partition& partition, OperationDetail
 	}
 
 #if defined(_WIN32)
-	// Only needed after moving or copying NTFS, which WParted does not do on
-	// Windows.  Never open "/dev/..." as a file on Windows.
-	(void)hidden_sectors;
-	operationdetail.get_last_child().add_child(OperationDetail(
-	        _("Updating the NTFS boot sector is not supported on Windows"), STATUS_ERROR, FONT_ITALIC));
-	operationdetail.get_last_child().set_success_and_capture_errors(false);
-	return false;
+	{
+		// Through a session on the partition as it is on disk now (its volume
+		// locked), never by opening "/dev/..." as a file.  Only an NTFS boot
+		// sector is changed.
+		std::string error;
+		WinHelpers::Target t;
+		std::unique_ptr<WinDisk::DiskSession> session;
+		int disk = WinDevNames::disk_index(partition.device_path.raw());
+		if (disk >= 0 && WinHelpers::locate(disk, uint64_t(partition.sector_start) * partition.sector_size, t, error))
+			session = WinDisk::get_backend()->open_session(t.disk, t.offset, t.length, true,
+			                                               WinDisk::SessionRange::INSIDE_PARTITION, error);
+		std::vector<uint8_t> boot;
+		bool ok = false;
+		if (session)
+		{
+			boot.resize(session->sector_size());
+			if (boot.size() >= 512 && session->read(0, boot.size(), boot.data(), error))
+			{
+				if (std::memcmp(&boot[3], "NTFS    ", 8) != 0)
+					error = "No NTFS boot sector at the start of the partition";
+				else
+				{
+					std::memcpy(&boot[0x1C], &hidden_sectors, sizeof(hidden_sectors));
+					ok = session->write(0, boot.size(), boot.data(), error) && session->flush(error);
+				}
+			}
+		}
+		if (! ok)
+		{
+			operationdetail.get_last_child().add_child(OperationDetail(
+			        Glib::ustring::compose(_("Error trying to write to boot sector in %1"), partition.get_path()) +
+			        ": " + error, STATUS_NONE, FONT_ITALIC));
+			operationdetail.get_last_child().set_success_and_capture_errors(false);
+			return false;
+		}
+		operationdetail.get_last_child().set_success_and_capture_errors(true);
+		if (beyond_32bit)
+			operationdetail.get_last_child().set_status(STATUS_WARNING);
+		return true;
+	}
 #endif
 	std::ofstream dev_file;
 	dev_file.open(partition.get_path().c_str(), std::ios::out|std::ios::binary);

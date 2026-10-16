@@ -239,7 +239,8 @@ std::map<int, std::string> disk_instances()
 class Win32Session : public DiskSession
 {
 public:
-	Win32Session(int index, uint64_t offset, uint64_t length, uint32_t sector_size, bool writable);
+	Win32Session(int index, uint64_t offset, uint64_t length, uint32_t sector_size, bool writable,
+	             bool lock_volumes);
 	~Win32Session() override;
 	bool open(std::string& error);
 
@@ -258,6 +259,7 @@ private:
 	uint64_t m_length;
 	uint32_t m_sector_size;
 	bool     m_writable;
+	bool     m_lock_volumes;
 	HANDLE   m_handle = INVALID_HANDLE_VALUE;
 	std::vector<std::unique_ptr<Win32Volumes::Lock>> m_locks;
 };
@@ -527,6 +529,21 @@ public:
 	                                          bool writable, SessionRange range,
 	                                          std::string& error) override
 	{
+		return open_win32_session(index, offset, length, writable, writable, range, error);
+	}
+
+
+	std::unique_ptr<DiskSession> open_locked_reader(int index, uint64_t offset, uint64_t length,
+	                                                std::string& error) override
+	{
+		return open_win32_session(index, offset, length, false, true, SessionRange::INSIDE_PARTITION, error);
+	}
+
+
+	std::unique_ptr<DiskSession> open_win32_session(int index, uint64_t offset, uint64_t length,
+	                                                bool writable, bool lock_volumes, SessionRange range,
+	                                                std::string& error)
+	{
 		DiskInfo info;
 		DiskLayout layout;
 		if (! query_disk(index, info, error) || ! read_layout(index, layout, error))
@@ -541,7 +558,8 @@ public:
 			return nullptr;
 
 		std::unique_ptr<Win32Session> session(new Win32Session(index, offset, length,
-		                                                        info.logical_sector_size, writable));
+		                                                        info.logical_sector_size, writable,
+		                                                        lock_volumes));
 		if (! session->open(error))
 			return nullptr;
 		return std::unique_ptr<DiskSession>(session.release());
@@ -763,9 +781,9 @@ public:
 // against the partition table.  Writable sessions keep every Windows volume on
 // the range locked and dismounted until the session is destroyed.
 Win32Session::Win32Session(int index, uint64_t offset, uint64_t length, uint32_t sector_size,
-                           bool writable)
+                           bool writable, bool lock_volumes)
  : m_index(index), m_offset(offset), m_length(length), m_sector_size(sector_size),
-   m_writable(writable)
+   m_writable(writable), m_lock_volumes(writable || lock_volumes)
 {
 }
 
@@ -785,7 +803,7 @@ Win32Session::~Win32Session()
 
 bool Win32Session::open(std::string& error)
 {
-	if (m_writable)
+	if (m_lock_volumes)
 	{
 		Win32Volumes::Extent range;
 		range.disk   = static_cast<uint32_t>(m_index);
@@ -975,6 +993,13 @@ private:
 };
 
 }  // anonymous namespace
+
+
+std::unique_ptr<DiskSession> DiskBackend::open_locked_reader(int index, uint64_t offset, uint64_t length,
+                                                             std::string& error)
+{
+	return open_session(index, offset, length, false, SessionRange::INSIDE_PARTITION, error);
+}
 
 
 std::unique_ptr<DiskSession> DiskBackend::open_session(int index, uint64_t offset, uint64_t length,

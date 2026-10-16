@@ -18,6 +18,8 @@
 
 #include "WinNativeFS.h"
 #include "WinFsOps.h"
+#include "WinCapabilities.h"
+#include "WinComponents.h"
 #include "OperationDetail.h"
 #include "Partition.h"
 #include "Utils.h"
@@ -73,9 +75,14 @@ FS WinNativeFS::get_filesystem_support()
 		fs.online_shrink = FS::EXTERNAL;
 	}
 
-	// Moving and copying need raw block copies, not supported by WParted 0.1.0.
-	fs.move = FS::NONE;
-	fs.copy = FS::NONE;
+	// Moving and copying: GParted's block copy, with the volumes locked and every
+	// block verified (WinCopy.h), when the capability resolver allows it.
+	const std::string name = Utils::get_filesystem_string(m_fstype).raw();
+	const Caps::Components comps = WinComponents::current();
+	if (Caps::resolve(name, Caps::Op::MOVE, Caps::DiskContext(), comps).available())
+		fs.move = FS::GPARTED;
+	if (Caps::resolve(name, Caps::Op::COPY, Caps::DiskContext(), comps).available())
+		fs.copy = FS::GPARTED;
 
 	switch (m_fstype)
 	{

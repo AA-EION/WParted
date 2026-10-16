@@ -182,7 +182,7 @@ TEST(Capabilities, Matrix)
 		{ "ext2",          "PPPPPPPPPPL" },
 		{ "linux-swap",    "nPnPPPPPPnn" },
 		{ "btrfs",         "PLLLLLLPPLL" },
-		{ "xfs",           "PLLLLL-PPLL" },
+		{ "xfs",           "PLLLLL-P-LL" },
 		{ "f2fs",          "-LL--L-PPLL" },   // No usage reader for F2FS
 		{ "luks",          "-----------" },
 		{ "lvm2 pv",       "-----------" },

@@ -42,6 +42,7 @@ void detect()
 	c.wparted_tools = WinHelpers::tools_installed();
 	c.file_reader = ! WinSandbox::helper_path("wparted-applefs").empty();
 	c.experimental = g_experimental;
+	c.block_copy = true;   // Verified block copy (WinCopy.h)
 	g_components = c;
 	g_detected = true;
 }

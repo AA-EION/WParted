@@ -167,6 +167,10 @@ FS WinExtFS::get_filesystem_support()
 		fs.grow = FS::EXTERNAL;
 	if (by_wparted(m_specific_fstype, Caps::Op::SHRINK) && fs.check && fs.read)
 		fs.shrink = FS::EXTERNAL;
+	if (by_wparted(m_specific_fstype, Caps::Op::MOVE))
+		fs.move = FS::GPARTED;
+	if (by_wparted(m_specific_fstype, Caps::Op::COPY))
+		fs.copy = FS::GPARTED;
 
 	// As GParted: ext2 and ext3 hold at most 2^32 - 1 blocks.
 	if (m_specific_fstype == FS_EXT2 || m_specific_fstype == FS_EXT3)
@@ -319,6 +323,11 @@ FS WinSwapFS::get_filesystem_support()
 		fs.grow = FS::EXTERNAL;
 	if (by_wparted(FS_LINUX_SWAP, Caps::Op::SHRINK))
 		fs.shrink = FS::EXTERNAL;
+	// Moved and copied by GParted's block copy, then recreated.
+	if (by_wparted(FS_LINUX_SWAP, Caps::Op::MOVE))
+		fs.move = FS::GPARTED;
+	if (by_wparted(FS_LINUX_SWAP, Caps::Op::COPY))
+		fs.copy = FS::GPARTED;
 	m_fs_limits = FS_Limits(WinSwap::MIN_PAGES * WinSwap::PAGE_SIZE, 0);
 	return fs;
 }
@@ -387,6 +396,10 @@ FS WinUsageFS::get_filesystem_support()
 	fs.busy = FS::GPARTED;
 	if (by_wparted(m_fstype, Caps::Op::INFO))
 		fs.read = FS::EXTERNAL;
+	if (by_wparted(m_fstype, Caps::Op::MOVE))
+		fs.move = FS::GPARTED;
+	if (by_wparted(m_fstype, Caps::Op::COPY))
+		fs.copy = FS::GPARTED;
 	return fs;
 }
 

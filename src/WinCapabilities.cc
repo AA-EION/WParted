@@ -179,6 +179,8 @@ Capability policy(const std::string& fs, Op op)
 					return WinFsUsage::supported(fs)
 					       ? available(Provider::WPARTED)
 					       : unsupported(N_("WParted recognises this file system but can't read its usage."));
+				if (op == Op::COPY && fs == "xfs")
+					return unsupported(N_("XFS file systems are copied with xfs_copy, which WParted doesn't have on Windows."));
 				if (op == Op::MOVE || op == Op::COPY)
 					return available(Provider::WPARTED);
 				if (op == Op::SHRINK && fs == "xfs")

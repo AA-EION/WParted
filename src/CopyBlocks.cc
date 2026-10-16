@@ -27,6 +27,10 @@
 #include <gtkmm/main.h>
 #include <sigc++/signal.h>
 #include <errno.h>
+#if defined(_WIN32)
+#include "WinCopy.h"
+#include <algorithm>
+#endif
 
 
 namespace WParted
@@ -236,6 +240,37 @@ void CopyBlocks::copy_block()
 		return;
 	}
 
+#if defined(_WIN32)
+	// Only through the copy context: locked volumes, verified writes.
+	if (blocksize != 0)
+	{
+		WinDisk::CopyContext* context = WinDisk::CopyContext::current();
+		std::string error;
+		Byte_Value src_bytes = num_blocks_src * sector_size_src;
+		Byte_Value dst_bytes = num_blocks_dst * sector_size_dst;
+		if (buf.size() < size_t(std::max(src_bytes, dst_bytes)))
+			buf.resize(std::max(src_bytes, dst_bytes), 0);
+		if (! context)
+		{
+			error_message = "No copy context";
+			success = false;
+		}
+		else if (! context->read(uint64_t(offset_src) * sector_size_src, src_bytes, buf.data(), error))
+		{
+			error_message = Glib::ustring::compose(_("Error while reading block at sector %1"), offset_src) +
+			                ": " + error;
+			success = false;
+		}
+		else if (! context->write_verified(uint64_t(offset_dst) * sector_size_dst, dst_bytes, buf.data(), error))
+		{
+			error_message = Glib::ustring::compose(_("Error while writing block at sector %1"), offset_dst) +
+			                ": " + error;
+			success = false;
+		}
+		else
+			success = true;
+	}
+#else
 	if ( blocksize != 0 )
 	{
 		if (ped_device_read(lp_device_src, buf.data(), offset_src, num_blocks_src))
@@ -250,6 +285,7 @@ void CopyBlocks::copy_block()
 		else
 			error_message = Glib::ustring::compose( _("Error while reading block at sector %1"), offset_src ) ;
 	}
+#endif
 	if ( blocksize > 0 )
 	{
 		offset_src += (blocksize / sector_size_src);

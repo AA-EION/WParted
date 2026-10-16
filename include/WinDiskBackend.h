@@ -95,6 +95,13 @@ public:
 	                                                  bool writable, SessionRange range,
 	                                                  std::string& error);
 
+	// A read-only session inside one partition whose volumes, if any, are locked
+	// and dismounted while it is open, so that nothing changes what is read (the
+	// source of a copy).  Fails when a volume is in use.  The default
+	// implementation has no volumes to lock.
+	virtual std::unique_ptr<DiskSession> open_locked_reader(int index, uint64_t offset, uint64_t length,
+	                                                        std::string& error);
+
 	// Disk numbers of all disks, ascending.
 	virtual std::vector<int> enumerate_disks() = 0;
 

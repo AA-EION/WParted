@@ -33,7 +33,9 @@ SRC="$WORK/src"
 BUILD="$WORK/build"
 rm -rf "$SRC" "$BUILD"
 mkdir -p "$SRC" "$BUILD"
-tar xf "$TARBALL" -C "$SRC" --strip-components=1
+# RELEASE-NOTES is the tarball's only symbolic link; MSYS2 can't create it
+# before its target exists, and the build doesn't need it.
+tar xf "$TARBALL" -C "$SRC" --strip-components=1 --exclude='*/RELEASE-NOTES'
 for p in "$HERE"/patches/*.patch; do
 	echo "==> Applying $(basename "$p")"
 	patch -p1 -d "$SRC" < "$p" > /dev/null

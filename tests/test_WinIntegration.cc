@@ -35,6 +35,7 @@
 #include "WinSwap.h"
 #include "WinFsProbe.h"
 #include "WinFsUsage.h"
+#include "WinCopy.h"
 
 #include "gtest/gtest.h"
 
@@ -197,6 +198,29 @@ protected:
 		}
 		if (dev)
 			ped_device_destroy(dev);
+		return ok;
+	}
+
+	// As GParted's resize_move_partition().
+	static bool set_geometry(int64_t sector_inside, int64_t start, int64_t end)
+	{
+		PedDevice* dev = ped_device_get(s_path.c_str());
+		PedDisk* disk = dev ? ped_disk_new(dev) : nullptr;
+		bool ok = false;
+		if (disk)
+		{
+			PedPartition* p = ped_disk_get_partition_by_sector(disk, sector_inside);
+			PedGeometry* g = ped_geometry_new(dev, start, end - start + 1);
+			PedConstraint* c = ped_constraint_exact(g);
+			ped_geometry_destroy(g);
+			ok = p && ped_disk_set_partition_geom(disk, p, c, start, end) && ped_disk_commit(disk);
+			ped_constraint_destroy(c);
+			ped_disk_destroy(disk);
+		}
+		if (dev)
+			ped_device_destroy(dev);
+		if (! ok)
+			ADD_FAILURE() << "set geometry: " << last_message();
 		return ok;
 	}
 
@@ -717,6 +741,107 @@ TEST_F(WinIntegration, K_Ext4AndSwapWithBundledTools)
 	// The ext4 file system is untouched by the swap space next to it.
 	r = run(WinHelpers::Ext::check_read_only(t));
 	EXPECT_EQ(0, r.exit_code) << r.output << r.error;
+}
+
+
+// GParted's block copy as WParted runs it (copy_blocks() with a CopyContext):
+// both directions, and NTFS boot sector hidden sectors, on a real NTFS volume.
+static bool block_copy(WinDisk::CopyContext& c, uint64_t src, uint64_t dst, uint64_t length, std::string& error)
+{
+	const uint64_t chunk = 4 * 1024 * 1024;
+	std::vector<uint8_t> buf(chunk);
+	const bool backwards = dst > src;   // Overlapping move to the right: from the end
+	for (uint64_t done = 0; done < length; )
+	{
+		uint64_t n = std::min(chunk, length - done);
+		uint64_t off = backwards ? length - done - n : done;
+		if (! c.read(src + off, n, buf.data(), error) || ! c.write_verified(dst + off, n, buf.data(), error))
+			return false;
+		done += n;
+	}
+	return c.flush(error);
+}
+
+
+static bool set_hidden_sectors(int disk, uint64_t offset, uint64_t length, uint32_t value, std::string& error)
+{
+	auto s = WinDisk::get_backend()->open_session(disk, offset, length, true, WinDisk::SessionRange::INSIDE_PARTITION,
+	                                              error);
+	if (! s)
+		return false;
+	std::vector<uint8_t> boot(512);
+	if (! s->read(0, 512, boot.data(), error))
+		return false;
+	if (std::memcmp(&boot[3], "NTFS    ", 8) != 0)
+	{
+		error = "not NTFS";
+		return false;
+	}
+	std::memcpy(&boot[0x1C], &value, 4);
+	return s->write(0, 512, boot.data(), error) && s->flush(error);
+}
+
+
+TEST_F(WinIntegration, L_MoveAndCopyNtfs)
+{
+	new_table("gpt");
+	const int64_t A_S = 1 * MiB, A_E = 129 * MiB - 1;      // Original place
+	const int64_t B_S = 129 * MiB, B_E = 257 * MiB - 1;    // Moved there (overlap free move right)
+	const int64_t C_S = 300 * MiB, C_E = 428 * MiB - 1;    // Copied there
+	ASSERT_EQ(1, create(PED_PARTITION_NORMAL, A_S, A_E, "ntfs"));
+	std::string error;
+	ASSERT_TRUE(WinVolumeOps::format(target(A_S, A_E), "NTFS", "MOVEME", error)) << error;
+	Win32Volumes::Volume v;
+	ASSERT_TRUE(volume(A_S, A_E, v));
+	const uint32_t serial = v.serial;
+	ASSERT_TRUE(WinVolumeOps::unmount(target(A_S, A_E), error)) << error;
+
+	// Move right by 128 MiB: grow over both places, copy, shrink to the new place.
+	ASSERT_TRUE(set_geometry(A_S, A_S, B_E));
+	{
+		WinDisk::CopyContext c;
+		ASSERT_TRUE(c.open(s_disk, uint64_t(A_S) * 512, 128ULL << 20, s_disk, uint64_t(B_S) * 512, 128ULL << 20, error))
+		        << error;
+		EXPECT_TRUE(c.shared());
+		// Never outside the destination, even inside the grown partition.
+		std::vector<uint8_t> junk(512, 0xEE);
+		EXPECT_FALSE(c.write_verified(uint64_t(A_S) * 512, 512, junk.data(), error));
+		ASSERT_TRUE(block_copy(c, uint64_t(A_S) * 512, uint64_t(B_S) * 512, 128ULL << 20, error)) << error;
+	}
+	ASSERT_TRUE(set_geometry(B_S, B_S, B_E));
+	ASSERT_TRUE(set_hidden_sectors(s_disk, uint64_t(B_S) * 512, 128ULL << 20, uint32_t(B_S), error)) << error;
+
+	ASSERT_TRUE(volume(B_S, B_E, v, 60000)) << "Windows did not mount the moved volume";
+	EXPECT_EQ(L"NTFS", v.fs_name);
+	EXPECT_EQ(L"MOVEME", v.label);
+	EXPECT_EQ(serial, v.serial);
+	ASSERT_TRUE(WinVolumeOps::unmount(target(B_S, B_E), error)) << error;
+	std::string cmd, output;
+	int exit_code = -1;
+	EXPECT_TRUE(WinVolumeOps::check_repair(target(B_S, B_E), [&output](const std::string& o) { output = o; },
+	                                       cmd, exit_code, error)) << error << "\n" << output;
+	EXPECT_EQ(0, exit_code) << output;
+
+	// Copy into a new partition: the source is locked and only read.
+	ASSERT_EQ(2, create(PED_PARTITION_NORMAL, C_S, C_E, "ntfs"));
+	{
+		WinDisk::CopyContext c;
+		ASSERT_TRUE(c.open(s_disk, uint64_t(B_S) * 512, 128ULL << 20, s_disk, uint64_t(C_S) * 512, 128ULL << 20, error))
+		        << error;
+		EXPECT_FALSE(c.shared());
+		ASSERT_TRUE(block_copy(c, uint64_t(B_S) * 512, uint64_t(C_S) * 512, 128ULL << 20, error)) << error;
+	}
+	ASSERT_TRUE(set_hidden_sectors(s_disk, uint64_t(C_S) * 512, 128ULL << 20, uint32_t(C_S), error)) << error;
+	ASSERT_TRUE(volume(C_S, C_E, v, 60000)) << "Windows did not mount the copy";
+	EXPECT_EQ(L"NTFS", v.fs_name);
+	EXPECT_EQ(L"MOVEME", v.label);
+	ASSERT_TRUE(volume(B_S, B_E, v, 60000));
+	EXPECT_EQ(L"MOVEME", v.label);
+
+	// A copy over a partition boundary is refused.
+	WinDisk::CopyContext bad;
+	EXPECT_FALSE(bad.open(s_disk, uint64_t(B_S) * 512, 128ULL << 20, s_disk, uint64_t(C_S - MiB) * 512, 128ULL << 20,
+	                      error));
 }
 
 
